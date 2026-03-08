@@ -3,30 +3,42 @@ export interface RubricCriterion {
   name: string;
   description: string;
   maxScore: number;
-  weight: number;
 }
 
-export interface Question {
+export interface ExamQuestion {
   id: string;
-  title: string;
+  questionNumber: number;
   questionText: string;
   modelAnswer: string;
+  marks: number;
   rubricCriteria: RubricCriterion[];
-  totalPoints: number;
+}
+
+export interface Exam {
+  id: string;
+  title: string;
+  subject: string;
+  totalMarks: number;
+  questions: ExamQuestion[];
   createdAt: string;
 }
 
-export interface StudentSubmission {
-  id: string;
+export interface StudentAnswer {
   questionId: string;
+  answer: string;
+}
+
+export interface ExamSubmission {
+  id: string;
+  examId: string;
   studentName: string;
   studentEmail: string;
-  answer: string;
+  answers: StudentAnswer[];
   submittedAt: string;
   evaluated: boolean;
 }
 
-export interface CriterionScore {
+export interface QuestionCriterionScore {
   criterionId: string;
   criterionName: string;
   score: number;
@@ -40,18 +52,34 @@ export interface Misconception {
   suggestion: string;
 }
 
-export interface EvaluationResult {
+export interface QuestionEvaluation {
+  questionId: string;
+  questionNumber: number;
+  questionText: string;
+  score: number;
+  maxMarks: number;
+  percentage: number;
+  criterionScores: QuestionCriterionScore[];
+  misconceptions: Misconception[];
+  feedback: string;
+  semanticSimilarity: number;
+}
+
+export interface ExamEvaluation {
   id: string;
   submissionId: string;
-  questionId: string;
+  examId: string;
+  examTitle: string;
   studentName: string;
-  overallScore: number;
+  studentEmail: string;
+  totalScore: number;
   totalPossible: number;
   percentage: number;
-  criterionScores: CriterionScore[];
-  misconceptions: Misconception[];
-  overallFeedback: string;
-  improvementSuggestions: string[];
-  semanticSimilarity: number;
+  grade: string;
+  questionEvaluations: QuestionEvaluation[];
+  performanceSummary: string;
+  strengths: string[];
+  weaknesses: string[];
+  overallMisconceptions: Misconception[];
   evaluatedAt: string;
 }

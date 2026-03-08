@@ -7,6 +7,7 @@ import { EvaluationProvider } from "@/context/EvaluationContext";
 import AppLayout from "@/components/AppLayout";
 import TeacherDashboard from "@/pages/TeacherDashboard";
 import StudentSubmission from "@/pages/StudentSubmission";
+import StudentDashboard from "@/pages/StudentDashboard";
 import EvaluationResults from "@/pages/EvaluationResults";
 import PerformanceAnalytics from "@/pages/PerformanceAnalytics";
 import NotFound from "./pages/NotFound";
@@ -24,6 +25,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<TeacherDashboard />} />
               <Route path="/submit" element={<StudentSubmission />} />
+              <Route path="/student" element={<StudentDashboard />} />
               <Route path="/results" element={<EvaluationResults />} />
               <Route path="/analytics" element={<PerformanceAnalytics />} />
               <Route path="*" element={<NotFound />} />
