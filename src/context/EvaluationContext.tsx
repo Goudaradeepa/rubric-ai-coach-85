@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
 import type { Exam, ExamSubmission, ExamEvaluation, ExamQuestion } from "@/types/evaluation";
 import { mockExams, mockSubmissions, mockEvaluations } from "@/data/mockData";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface EvaluationContextType {
   exams: Exam[];
@@ -42,47 +44,70 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     const exam = exams.find(e => e.id === sub.examId);
     if (!exam) return;
 
-    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const { data, error } = await supabase.functions.invoke("evaluate-exam", {
+        body: {
+          questions: exam.questions,
+          answers: sub.answers,
+          examTitle: exam.title,
+        },
+      });
 
-    const questionEvaluations = exam.questions.map(q => {
-      const studentAnswer = sub.answers.find(a => a.questionId === q.id);
-      const quality = studentAnswer ? Math.min(1, Math.max(0.2, studentAnswer.answer.length / 200)) : 0.2;
-      const criterionScores = q.rubricCriteria.map(c => {
-        const ratio = Math.max(0.2, Math.min(1, quality + (Math.random() - 0.5) * 0.3));
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      const aiResult = data;
+
+      // Build full evaluation from AI response
+      const questionEvaluations = exam.questions.map(q => {
+        const aiQEval = aiResult.questionEvaluations.find(
+          (ae: any) => ae.questionId === q.id || ae.questionNumber === q.questionNumber
+        );
+        if (!aiQEval) {
+          // Fallback if AI didn't return this question
+          return {
+            questionId: q.id, questionNumber: q.questionNumber, questionText: q.questionText,
+            score: 0, maxMarks: q.marks, percentage: 0,
+            criterionScores: q.rubricCriteria.map(c => ({ criterionId: c.id, criterionName: c.name, score: 0, maxScore: c.maxScore, feedback: "Not evaluated" })),
+            misconceptions: [], feedback: "Could not evaluate this question.", semanticSimilarity: 0,
+          };
+        }
+        const score = aiQEval.criterionScores.reduce((s: number, c: any) => s + c.score, 0);
+        const pct = Math.round((score / q.marks) * 100);
         return {
-          criterionId: c.id, criterionName: c.name,
-          score: Math.round(c.maxScore * ratio * 10) / 10, maxScore: c.maxScore,
-          feedback: ratio > 0.75 ? `Strong ${c.name.toLowerCase()}.` : `Needs improvement in ${c.name.toLowerCase()}.`,
+          questionId: q.id, questionNumber: q.questionNumber, questionText: q.questionText,
+          score: Math.round(score * 10) / 10, maxMarks: q.marks, percentage: pct,
+          criterionScores: aiQEval.criterionScores,
+          misconceptions: aiQEval.misconceptions || [],
+          feedback: aiQEval.feedback,
+          semanticSimilarity: aiQEval.semanticSimilarity,
         };
       });
-      const score = criterionScores.reduce((s, c) => s + c.score, 0);
-      const pct = Math.round((score / q.marks) * 100);
-      return {
-        questionId: q.id, questionNumber: q.questionNumber, questionText: q.questionText,
-        score: Math.round(score * 10) / 10, maxMarks: q.marks, percentage: pct, criterionScores,
-        misconceptions: pct < 60 ? [{ topic: `Q${q.questionNumber}`, description: "Gaps in understanding", suggestion: "Review this topic" }] : [],
-        feedback: pct >= 80 ? "Excellent." : pct >= 60 ? "Good, but room for improvement." : "Needs significant revision.",
-        semanticSimilarity: Math.max(0.3, quality + (Math.random() - 0.5) * 0.2),
+
+      const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
+      const pct = Math.round((totalScore / exam.totalMarks) * 100);
+      const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
+
+      const evaluation: ExamEvaluation = {
+        id: crypto.randomUUID(), submissionId, examId: exam.id, examTitle: exam.title,
+        studentName: sub.studentName, studentEmail: sub.studentEmail,
+        totalScore: Math.round(totalScore * 10) / 10, totalPossible: exam.totalMarks, percentage: pct, grade,
+        questionEvaluations,
+        overallMisconceptions: questionEvaluations.flatMap(e => e.misconceptions),
+        performanceSummary: aiResult.performanceSummary,
+        strengths: aiResult.strengths,
+        weaknesses: aiResult.weaknesses,
+        evaluatedAt: new Date().toISOString(),
       };
-    });
 
-    const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
-    const pct = Math.round((totalScore / exam.totalMarks) * 100);
-    const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
-
-    const evaluation: ExamEvaluation = {
-      id: crypto.randomUUID(), submissionId, examId: exam.id, examTitle: exam.title,
-      studentName: sub.studentName, studentEmail: sub.studentEmail,
-      totalScore: Math.round(totalScore * 10) / 10, totalPossible: exam.totalMarks, percentage: pct, grade,
-      questionEvaluations, overallMisconceptions: questionEvaluations.flatMap(e => e.misconceptions),
-      performanceSummary: pct >= 80 ? "Excellent performance." : pct >= 60 ? "Good performance with areas to improve." : "Below expectations.",
-      strengths: questionEvaluations.filter(e => e.percentage >= 75).map(e => `Strong in Q${e.questionNumber}`),
-      weaknesses: questionEvaluations.filter(e => e.percentage < 60).map(e => `Weak in Q${e.questionNumber}`),
-      evaluatedAt: new Date().toISOString(),
-    };
-
-    setEvaluations(prev => [...prev, evaluation]);
-    setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, evaluated: true } : s));
+      setEvaluations(prev => [...prev, evaluation]);
+      setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, evaluated: true } : s));
+      toast.success("AI evaluation complete!");
+    } catch (err: any) {
+      console.error("Evaluation failed:", err);
+      toast.error(err.message || "AI evaluation failed. Please try again.");
+      throw err;
+    }
   }, [submissions, exams]);
 
   const getExamById = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
