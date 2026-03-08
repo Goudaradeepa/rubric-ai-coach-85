@@ -213,6 +213,8 @@ const TeacherUploadEvaluation: React.FC = () => {
       grade,
       teacherReviewed: true,
       evaluatedAt: new Date().toISOString(),
+      answerSheetUrl: uploadedUrl || undefined,
+      ocrFullText: ocrFullText || undefined,
     };
 
     addTeacherEvaluation(finalEval);

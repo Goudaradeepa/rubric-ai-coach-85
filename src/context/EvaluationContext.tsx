@@ -120,8 +120,27 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, [submissions, exams]);
 
   const addTeacherEvaluation = useCallback((evaluation: ExamEvaluation) => {
+    // Also create a submission entry so it appears in the "All Submissions" table
+    const submissionId = evaluation.submissionId;
+    const existingSub = submissions.find(s => s.id === submissionId);
+    if (!existingSub) {
+      setSubmissions(prev => [...prev, {
+        id: submissionId,
+        examId: evaluation.examId,
+        studentName: evaluation.studentName,
+        studentEmail: evaluation.studentEmail,
+        answers: evaluation.questionEvaluations.map(qe => ({ questionId: qe.questionId, answer: "" })),
+        submittedAt: new Date().toISOString(),
+        evaluated: true,
+        submissionType: "scanned" as const,
+        answerSheetUrl: evaluation.answerSheetUrl,
+        ocrFullText: evaluation.ocrFullText,
+      }]);
+    } else {
+      setSubmissions(prev => prev.map(s => s.id === submissionId ? { ...s, evaluated: true } : s));
+    }
     setEvaluations(prev => [...prev, evaluation]);
-  }, []);
+  }, [submissions]);
 
   const getExamById = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
   const getEvaluationBySubmissionId = useCallback((id: string) => evaluations.find(e => e.submissionId === id), [evaluations]);
