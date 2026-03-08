@@ -139,6 +139,17 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq6", answer: "Kinetic energy is when something moves. Potential energy is stored. KE = ½mv²." },
     { questionId: "eq7", answer: "Faraday discovered that magnets can make electricity. This is used in power plants." },
   ], submittedAt: "2026-03-04T11:30:00Z", evaluated: true },
+  { id: "sub6", examId: "exam1", studentName: "Frank Wilson", studentEmail: "frank@school.edu", answers: [
+    { questionId: "eq1", answer: "Photosynthesis uses light energy to convert CO2 and water into glucose and oxygen. The light reactions occur in the thylakoid membranes producing ATP and NADPH, while the Calvin cycle in the stroma uses these to fix carbon." },
+    { questionId: "eq2", answer: "DNA is a double helix made of nucleotides with four bases. It stores genetic instructions. Replication involves helicase unwinding and polymerase building new strands." },
+    { questionId: "eq3", answer: "Natural selection means organisms best adapted to their environment survive and reproduce more. For example, Darwin's finches evolved different beak shapes for different food sources. Also, bacteria can become resistant to antibiotics through natural selection." },
+    { questionId: "eq4", answer: "Mitosis produces two identical diploid cells for growth. Meiosis has two divisions producing four haploid gametes with genetic variation through crossing over." },
+  ], submittedAt: "2026-03-06T14:00:00Z", evaluated: false },
+  { id: "sub7", examId: "exam2", studentName: "Grace Kim", studentEmail: "grace@school.edu", answers: [
+    { questionId: "eq5", answer: "Newton's first law says objects at rest stay at rest unless a force acts on them, like a book on a table. Second law is F=ma, meaning more force means more acceleration. Third law says every action has an equal and opposite reaction, like when you push a wall it pushes back." },
+    { questionId: "eq6", answer: "Kinetic energy is the energy of motion, KE = ½mv². Potential energy is stored energy due to position, PE = mgh. To derive KE: start with W = Fd, substitute F=ma, and using kinematics v²=2ad, we get W = ½mv²." },
+    { questionId: "eq7", answer: "Electromagnetic induction is generating an electric current by changing the magnetic field around a conductor. Faraday's law states that the induced EMF equals the negative rate of change of magnetic flux. This principle is used in electric generators and transformers." },
+  ], submittedAt: "2026-03-06T15:00:00Z", evaluated: false },
 ];
 
 const buildEvaluation = (sub: ExamSubmission, exam: Exam, qualities: number[]): ExamEvaluation => {
