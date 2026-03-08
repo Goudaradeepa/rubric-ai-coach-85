@@ -87,6 +87,8 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           misconceptions: aiQEval.misconceptions || [],
           feedback: aiQEval.feedback,
           semanticSimilarity: aiQEval.semanticSimilarity,
+          detectedConcepts: aiQEval.detectedConcepts || [],
+          missingConcepts: aiQEval.missingConcepts || [],
         };
       });
 
