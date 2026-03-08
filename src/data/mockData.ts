@@ -139,7 +139,7 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq6", answer: "Kinetic energy is when something moves. Potential energy is stored. KE = ½mv²." },
     { questionId: "eq7", answer: "Faraday discovered that magnets can make electricity. This is used in power plants." },
   ], submittedAt: "2026-03-04T11:30:00Z", evaluated: true },
-  { id: "sub6", examId: "exam1", studentName: "Frank Wilson", studentEmail: "frank@school.edu", answers: [
+  { id: "sub6", examId: "exam1", studentName: "Frank Wilson", studentEmail: "frank@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Photosynthesis uses light energy to convert CO2 and water into glucose and oxygen. The light reactions occur in the thylakoid membranes producing ATP and NADPH, while the Calvin cycle in the stroma uses these to fix carbon." },
     { questionId: "eq2", answer: "DNA is a double helix made of nucleotides with four bases. It stores genetic instructions. Replication involves helicase unwinding and polymerase building new strands." },
     { questionId: "eq3", answer: "Natural selection means organisms best adapted to their environment survive and reproduce more. For example, Darwin's finches evolved different beak shapes for different food sources. Also, bacteria can become resistant to antibiotics through natural selection." },
