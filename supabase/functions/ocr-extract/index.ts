@@ -15,24 +15,25 @@ serve(async (req) => {
     const { fileUrl, mimeType, questionCount } = await req.json();
     if (!fileUrl) throw new Error("fileUrl is required");
 
-    // Fetch the image/PDF as base64
     const fileResp = await fetch(fileUrl);
     if (!fileResp.ok) throw new Error(`Failed to fetch file: ${fileResp.status}`);
     const fileBytes = await fileResp.arrayBuffer();
     const base64 = btoa(String.fromCharCode(...new Uint8Array(fileBytes)));
 
     const detectedMime = mimeType || "image/png";
-    
+
     const systemPrompt = `You are an expert OCR system that extracts handwritten and printed text from scanned exam answer sheets. 
 You must:
 1. Extract ALL text from the document accurately
-2. Identify and separate answers by question number (Q1, Q2, Q3, etc. or Question 1, Question 2, etc.)
-3. If question numbers aren't clearly visible, try to detect answer boundaries based on spacing/formatting
-4. Preserve the student's original text as accurately as possible
-5. Handle both handwritten and typed text`;
+2. Detect student information: name, roll number/ID, class/section if visible
+3. Identify and separate answers by question number (Q1, Q2, Q3, etc.)
+4. If question numbers aren't clearly visible, detect answer boundaries based on spacing/formatting
+5. Preserve the student's original text as accurately as possible
+6. Handle both handwritten and typed text`;
 
     const userPrompt = `Extract all text from this scanned answer sheet. ${questionCount ? `The exam has ${questionCount} questions.` : "Detect how many questions there are."}
 
+Also detect the student's name, roll number/ID, and any exam information visible on the sheet.
 Separate the text by question number. Use the extract_answers tool to return structured results.`;
 
     const messages: any[] = [
@@ -63,10 +64,22 @@ Separate the text by question number. Use the extract_answers tool to return str
             type: "function",
             function: {
               name: "extract_answers",
-              description: "Return extracted text organized by question",
+              description: "Return extracted text organized by question with student info",
               parameters: {
                 type: "object",
                 properties: {
+                  studentName: {
+                    type: "string",
+                    description: "Detected student name from the sheet, or empty string if not found",
+                  },
+                  rollNumber: {
+                    type: "string",
+                    description: "Detected roll number/student ID, or empty string if not found",
+                  },
+                  detectedSubject: {
+                    type: "string",
+                    description: "Detected subject/exam name from the sheet, or empty string if not found",
+                  },
                   fullText: {
                     type: "string",
                     description: "The complete extracted text from the document",
@@ -89,7 +102,7 @@ Separate the text by question number. Use the extract_answers tool to return str
                   },
                   totalQuestionsDetected: { type: "number" },
                 },
-                required: ["fullText", "answers", "totalQuestionsDetected"],
+                required: ["studentName", "rollNumber", "detectedSubject", "fullText", "answers", "totalQuestionsDetected"],
                 additionalProperties: false,
               },
             },

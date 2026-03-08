@@ -11,6 +11,7 @@ import StudentDashboard from "@/pages/StudentDashboard";
 import EvaluationResults from "@/pages/EvaluationResults";
 import PerformanceAnalytics from "@/pages/PerformanceAnalytics";
 import TeacherUploadEvaluation from "@/pages/TeacherUploadEvaluation";
+import TeacherBulkEvaluation from "@/pages/TeacherBulkEvaluation";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +27,7 @@ const App = () => (
             <Routes>
               <Route path="/" element={<TeacherDashboard />} />
               <Route path="/teacher-evaluate" element={<TeacherUploadEvaluation />} />
+              <Route path="/bulk-evaluate" element={<TeacherBulkEvaluation />} />
               <Route path="/submit" element={<StudentSubmission />} />
               <Route path="/student" element={<StudentDashboard />} />
               <Route path="/results" element={<EvaluationResults />} />
