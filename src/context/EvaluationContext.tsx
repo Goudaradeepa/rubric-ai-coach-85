@@ -119,12 +119,16 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     }
   }, [submissions, exams]);
 
+  const addTeacherEvaluation = useCallback((evaluation: ExamEvaluation) => {
+    setEvaluations(prev => [...prev, evaluation]);
+  }, []);
+
   const getExamById = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
   const getEvaluationBySubmissionId = useCallback((id: string) => evaluations.find(e => e.submissionId === id), [evaluations]);
   const getStudentEvaluations = useCallback((email: string) => evaluations.filter(e => e.studentEmail === email), [evaluations]);
 
   return (
-    <EvaluationContext.Provider value={{ exams, submissions, evaluations, addExam, addSubmission, evaluateSubmission, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
+    <EvaluationContext.Provider value={{ exams, submissions, evaluations, addExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
       {children}
     </EvaluationContext.Provider>
   );

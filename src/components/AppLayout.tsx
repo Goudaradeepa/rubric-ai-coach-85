@@ -2,9 +2,12 @@ import React from "react";
 import { Link, useLocation } from "react-router-dom";
 import { BookOpen, GraduationCap, BarChart3, ClipboardCheck, User, FileText } from "lucide-react";
 
+import { Upload } from "lucide-react";
+
 const navItems = [
-  { path: "/", label: "Teacher", icon: BookOpen },
-  { path: "/submit", label: "Submit Exam", icon: FileText },
+  { path: "/", label: "Dashboard", icon: BookOpen },
+  { path: "/teacher-evaluate", label: "Evaluate", icon: Upload },
+  { path: "/submit", label: "Submit", icon: FileText },
   { path: "/student", label: "Student", icon: User },
   { path: "/results", label: "Results", icon: ClipboardCheck },
   { path: "/analytics", label: "Analytics", icon: BarChart3 },

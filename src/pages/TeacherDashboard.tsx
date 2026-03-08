@@ -135,6 +135,11 @@ const TeacherDashboard: React.FC = () => {
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${sub.evaluated ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                             {sub.evaluated ? "Evaluated" : "Pending"}
                           </span>
+                          {evaluation?.teacherReviewed && (
+                            <span className="ml-1 inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                              Reviewed
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-foreground">{evaluation ? `${evaluation.totalScore}/${evaluation.totalPossible}` : "—"}</td>
                         <td className="px-4 py-3">
