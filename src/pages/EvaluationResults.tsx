@@ -1,18 +1,22 @@
 import React, { useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { AlertTriangle, CheckCircle, Lightbulb, Target, TrendingUp, ChevronDown, ChevronUp } from "lucide-react";
+import { AlertTriangle, CheckCircle, Lightbulb, Target, TrendingUp, ChevronDown, ChevronUp, FileText, Image, Eye } from "lucide-react";
 import { useEvaluation } from "@/context/EvaluationContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 
 const EvaluationResults: React.FC = () => {
   const { evaluations, submissions } = useEvaluation();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("id") || (evaluations[0]?.submissionId ?? "");
   const [expandedQ, setExpandedQ] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const evaluation = evaluations.find(e => e.submissionId === selectedId);
+  const submission = submissions.find(s => s.id === selectedId);
 
   const getScoreColor = (pct: number) =>
     pct >= 80 ? "text-success" : pct >= 60 ? "text-warning" : "text-destructive";
@@ -33,7 +37,12 @@ const EvaluationResults: React.FC = () => {
           <SelectContent>
             {submissions.filter(s => s.evaluated).map(s => {
               const ev = evaluations.find(e => e.submissionId === s.id);
-              return <SelectItem key={s.id} value={s.id}>{s.studentName} — {ev?.examTitle ?? ""}</SelectItem>;
+              return (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.studentName} — {ev?.examTitle ?? ""}
+                  {s.submissionType === "scanned" && " 📄"}
+                </SelectItem>
+              );
             })}
           </SelectContent>
         </Select>
@@ -60,6 +69,53 @@ const EvaluationResults: React.FC = () => {
               </motion.div>
             ))}
           </div>
+
+          {/* Scanned answer sheet info */}
+          {submission?.submissionType === "scanned" && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+              <Card className="shadow-card">
+                <CardHeader>
+                  <CardTitle className="font-heading flex items-center gap-2">
+                    <FileText className="h-5 w-5 text-accent" /> Scanned Answer Sheet
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Tabs defaultValue="text">
+                    <TabsList>
+                      <TabsTrigger value="text">Extracted Text</TabsTrigger>
+                      {submission.answerSheetUrl && <TabsTrigger value="preview">Sheet Preview</TabsTrigger>}
+                    </TabsList>
+                    <TabsContent value="text" className="mt-3">
+                      <div className="rounded-lg border border-border bg-muted/20 p-4 max-h-64 overflow-y-auto">
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap font-mono">
+                          {submission.ocrFullText || "No extracted text available"}
+                        </p>
+                      </div>
+                      {submission.ocrExtractedAnswers && (
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {submission.ocrExtractedAnswers.map(a => (
+                            <Badge key={a.questionNumber} variant="secondary" className="text-xs">
+                              Q{a.questionNumber}: {Math.round(a.confidence * 100)}% confidence
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                    {submission.answerSheetUrl && (
+                      <TabsContent value="preview" className="mt-3">
+                        <div className="rounded-lg border border-border overflow-hidden">
+                          <img src={submission.answerSheetUrl} alt="Answer sheet" className="w-full max-h-96 object-contain bg-muted/20" />
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-2">
+                          File: {submission.answerSheetFileName}
+                        </p>
+                      </TabsContent>
+                    )}
+                  </Tabs>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* Performance summary */}
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
@@ -139,6 +195,36 @@ const EvaluationResults: React.FC = () => {
                                 );
                               })}
                             </div>
+
+                            {/* Detected & Missing Concepts */}
+                            {(qe.detectedConcepts?.length || qe.missingConcepts?.length) ? (
+                              <div className="grid gap-3 sm:grid-cols-2">
+                                {qe.detectedConcepts && qe.detectedConcepts.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h4 className="text-sm font-medium text-success flex items-center gap-2">
+                                      <CheckCircle className="h-4 w-4" /> Detected Concepts
+                                    </h4>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {qe.detectedConcepts.map((c, ci) => (
+                                        <Badge key={ci} variant="secondary" className="bg-success/10 text-success border-success/20 text-xs">{c}</Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                                {qe.missingConcepts && qe.missingConcepts.length > 0 && (
+                                  <div className="space-y-2">
+                                    <h4 className="text-sm font-medium text-destructive flex items-center gap-2">
+                                      <AlertTriangle className="h-4 w-4" /> Missing Concepts
+                                    </h4>
+                                    <div className="flex flex-wrap gap-1.5">
+                                      {qe.missingConcepts.map((c, ci) => (
+                                        <Badge key={ci} variant="secondary" className="bg-destructive/10 text-destructive border-destructive/20 text-xs">{c}</Badge>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
 
                             {/* Misconceptions */}
                             {qe.misconceptions.length > 0 && (
