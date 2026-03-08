@@ -38,7 +38,14 @@ const TeacherDashboard: React.FC = () => {
           <h1 className="font-heading text-3xl font-bold text-foreground">Teacher Dashboard</h1>
           <p className="mt-1 text-muted-foreground">Create exams, manage submissions, and review AI evaluations</p>
         </div>
-        <CreateExamDialog />
+        <div className="flex gap-2">
+          <Link to="/teacher-evaluate">
+            <Button variant="outline" className="gap-2">
+              <FileText className="h-4 w-4" /> Upload & Evaluate
+            </Button>
+          </Link>
+          <CreateExamDialog />
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -128,6 +135,11 @@ const TeacherDashboard: React.FC = () => {
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${sub.evaluated ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                             {sub.evaluated ? "Evaluated" : "Pending"}
                           </span>
+                          {evaluation?.teacherReviewed && (
+                            <span className="ml-1 inline-flex rounded-full bg-accent/10 px-2 py-0.5 text-xs font-medium text-accent">
+                              Reviewed
+                            </span>
+                          )}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-foreground">{evaluation ? `${evaluation.totalScore}/${evaluation.totalPossible}` : "—"}</td>
                         <td className="px-4 py-3">

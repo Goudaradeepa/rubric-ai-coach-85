@@ -96,4 +96,9 @@ export interface ExamEvaluation {
   weaknesses: string[];
   overallMisconceptions: Misconception[];
   evaluatedAt: string;
+  // Teacher review fields
+  teacherReviewed?: boolean;
+  answerSheetUrl?: string;
+  answerSheetFileName?: string;
+  ocrFullText?: string;
 }
