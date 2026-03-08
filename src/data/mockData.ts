@@ -129,7 +129,7 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq3", answer: "Strong animals survive and weak ones die." },
     { questionId: "eq4", answer: "Mitosis and meiosis are types of cell division." },
   ], submittedAt: "2026-03-03T10:00:00Z", evaluated: true },
-  { id: "sub4", examId: "exam2", studentName: "David Lee", studentEmail: "david@school.edu", answers: [
+  { id: "sub4", examId: "exam2", studentName: "David Lee", studentEmail: "david@school.edu", submissionType: "typed", answers: [
     { questionId: "eq5", answer: "First law: objects stay still or moving unless a force acts. Like a ball on grass slows from friction. Second law: F=ma, kicking a ball harder = more acceleration. Third law: action-reaction, swimming pushes water back to move forward." },
     { questionId: "eq6", answer: "Kinetic energy is energy of moving objects, KE = ½mv². Potential energy is stored energy, PE = mgh. Derivation: from work-energy theorem, W = Fd = mad, using v² = 2ad, W = m(v²/2) = ½mv²." },
     { questionId: "eq7", answer: "Electromagnetic induction creates electricity from changing magnetic fields. Faraday's law says induced EMF equals negative rate of change of flux, ε = -dΦ/dt. Used in generators and transformers." },
