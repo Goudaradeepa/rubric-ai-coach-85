@@ -145,7 +145,7 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq3", answer: "Natural selection means organisms best adapted to their environment survive and reproduce more. For example, Darwin's finches evolved different beak shapes for different food sources. Also, bacteria can become resistant to antibiotics through natural selection." },
     { questionId: "eq4", answer: "Mitosis produces two identical diploid cells for growth. Meiosis has two divisions producing four haploid gametes with genetic variation through crossing over." },
   ], submittedAt: "2026-03-06T14:00:00Z", evaluated: false },
-  { id: "sub7", examId: "exam2", studentName: "Grace Kim", studentEmail: "grace@school.edu", answers: [
+  { id: "sub7", examId: "exam2", studentName: "Grace Kim", studentEmail: "grace@school.edu", submissionType: "typed", answers: [
     { questionId: "eq5", answer: "Newton's first law says objects at rest stay at rest unless a force acts on them, like a book on a table. Second law is F=ma, meaning more force means more acceleration. Third law says every action has an equal and opposite reaction, like when you push a wall it pushes back." },
     { questionId: "eq6", answer: "Kinetic energy is the energy of motion, KE = ½mv². Potential energy is stored energy due to position, PE = mgh. To derive KE: start with W = Fd, substitute F=ma, and using kinematics v²=2ad, we get W = ½mv²." },
     { questionId: "eq7", answer: "Electromagnetic induction is generating an electric current by changing the magnetic field around a conductor. Faraday's law states that the induced EMF equals the negative rate of change of magnetic flux. This principle is used in electric generators and transformers." },
