@@ -11,6 +11,7 @@ interface EvaluationContextType {
   addExam: (exam: Omit<Exam, "id" | "createdAt" | "totalMarks">) => void;
   addSubmission: (sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => void;
   evaluateSubmission: (submissionId: string) => Promise<void>;
+  addTeacherEvaluation: (evaluation: ExamEvaluation) => void;
   getExamById: (id: string) => Exam | undefined;
   getEvaluationBySubmissionId: (id: string) => ExamEvaluation | undefined;
   getStudentEvaluations: (email: string) => ExamEvaluation[];
