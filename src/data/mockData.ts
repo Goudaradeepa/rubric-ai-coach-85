@@ -111,7 +111,7 @@ const generateQuestionEval = (q: Exam["questions"][0], answerQuality: number): E
 const getGrade = (pct: number) => pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
 export const mockSubmissions: ExamSubmission[] = [
-  { id: "sub1", examId: "exam1", studentName: "Alice Johnson", studentEmail: "alice@school.edu", answers: [
+  { id: "sub1", examId: "exam1", studentName: "Alice Johnson", studentEmail: "alice@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Photosynthesis is when plants use sunlight to make food. Light reactions happen in thylakoid and make ATP. Calvin cycle uses CO2 to make sugar." },
     { questionId: "eq2", answer: "DNA is a double helix with bases A, T, G, C. It stores genetic information. During replication, the strands separate and new complementary strands are made by DNA polymerase." },
     { questionId: "eq3", answer: "Natural selection is survival of the fittest. Animals that are better adapted survive. Like how cheetahs are fast to catch prey." },
