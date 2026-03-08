@@ -123,7 +123,7 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq3", answer: "Natural selection is the mechanism where organisms with advantageous traits survive and reproduce more. Example: peppered moths darkening during industrial revolution. Example: antibiotic-resistant bacteria surviving treatment." },
     { questionId: "eq4", answer: "Mitosis: one division, 2 diploid cells, for growth. Meiosis: two divisions, 4 haploid gametes, crossing over creates genetic diversity for sexual reproduction." },
   ], submittedAt: "2026-03-03T09:30:00Z", evaluated: true },
-  { id: "sub3", examId: "exam1", studentName: "Carol Davis", studentEmail: "carol@school.edu", answers: [
+  { id: "sub3", examId: "exam1", studentName: "Carol Davis", studentEmail: "carol@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Plants make energy from the sun." },
     { questionId: "eq2", answer: "DNA has genes and stuff. It copies itself." },
     { questionId: "eq3", answer: "Strong animals survive and weak ones die." },
