@@ -134,7 +134,7 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq6", answer: "Kinetic energy is energy of moving objects, KE = ½mv². Potential energy is stored energy, PE = mgh. Derivation: from work-energy theorem, W = Fd = mad, using v² = 2ad, W = m(v²/2) = ½mv²." },
     { questionId: "eq7", answer: "Electromagnetic induction creates electricity from changing magnetic fields. Faraday's law says induced EMF equals negative rate of change of flux, ε = -dΦ/dt. Used in generators and transformers." },
   ], submittedAt: "2026-03-04T11:00:00Z", evaluated: true },
-  { id: "sub5", examId: "exam2", studentName: "Eva Martinez", studentEmail: "eva@school.edu", answers: [
+  { id: "sub5", examId: "exam2", studentName: "Eva Martinez", studentEmail: "eva@school.edu", submissionType: "typed", answers: [
     { questionId: "eq5", answer: "Newton had three laws about motion. The first is about inertia. The second is F=ma. The third is action-reaction." },
     { questionId: "eq6", answer: "Kinetic energy is when something moves. Potential energy is stored. KE = ½mv²." },
     { questionId: "eq7", answer: "Faraday discovered that magnets can make electricity. This is used in power plants." },
