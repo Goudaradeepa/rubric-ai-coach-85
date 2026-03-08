@@ -35,7 +35,13 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const addSubmission = useCallback((sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => {
-    setSubmissions(prev => [...prev, { ...sub, id: crypto.randomUUID(), submittedAt: new Date().toISOString(), evaluated: false }]);
+    setSubmissions(prev => [...prev, {
+      ...sub,
+      id: crypto.randomUUID(),
+      submittedAt: new Date().toISOString(),
+      evaluated: false,
+      submissionType: sub.submissionType || "typed",
+    }]);
   }, []);
 
   const evaluateSubmission = useCallback(async (submissionId: string) => {
@@ -81,6 +87,8 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
           misconceptions: aiQEval.misconceptions || [],
           feedback: aiQEval.feedback,
           semanticSimilarity: aiQEval.semanticSimilarity,
+          detectedConcepts: aiQEval.detectedConcepts || [],
+          missingConcepts: aiQEval.missingConcepts || [],
         };
       });
 

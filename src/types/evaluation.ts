@@ -28,6 +28,12 @@ export interface StudentAnswer {
   answer: string;
 }
 
+export interface OCRExtractedAnswer {
+  questionNumber: number;
+  extractedText: string;
+  confidence: number;
+}
+
 export interface ExamSubmission {
   id: string;
   examId: string;
@@ -36,6 +42,12 @@ export interface ExamSubmission {
   answers: StudentAnswer[];
   submittedAt: string;
   evaluated: boolean;
+  // Scanned upload fields
+  answerSheetUrl?: string;
+  answerSheetFileName?: string;
+  ocrFullText?: string;
+  ocrExtractedAnswers?: OCRExtractedAnswer[];
+  submissionType: "typed" | "scanned";
 }
 
 export interface QuestionCriterionScore {
@@ -63,6 +75,8 @@ export interface QuestionEvaluation {
   misconceptions: Misconception[];
   feedback: string;
   semanticSimilarity: number;
+  detectedConcepts?: string[];
+  missingConcepts?: string[];
 }
 
 export interface ExamEvaluation {

@@ -111,41 +111,41 @@ const generateQuestionEval = (q: Exam["questions"][0], answerQuality: number): E
 const getGrade = (pct: number) => pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
 export const mockSubmissions: ExamSubmission[] = [
-  { id: "sub1", examId: "exam1", studentName: "Alice Johnson", studentEmail: "alice@school.edu", answers: [
+  { id: "sub1", examId: "exam1", studentName: "Alice Johnson", studentEmail: "alice@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Photosynthesis is when plants use sunlight to make food. Light reactions happen in thylakoid and make ATP. Calvin cycle uses CO2 to make sugar." },
     { questionId: "eq2", answer: "DNA is a double helix with bases A, T, G, C. It stores genetic information. During replication, the strands separate and new complementary strands are made by DNA polymerase." },
     { questionId: "eq3", answer: "Natural selection is survival of the fittest. Animals that are better adapted survive. Like how cheetahs are fast to catch prey." },
     { questionId: "eq4", answer: "Mitosis makes two identical cells. Meiosis makes four different cells with half the chromosomes for reproduction." },
   ], submittedAt: "2026-03-03T09:00:00Z", evaluated: true },
-  { id: "sub2", examId: "exam1", studentName: "Bob Chen", studentEmail: "bob@school.edu", answers: [
+  { id: "sub2", examId: "exam1", studentName: "Bob Chen", studentEmail: "bob@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Photosynthesis converts light to chemical energy. In thylakoid membranes, light-dependent reactions split H2O producing ATP, NADPH, O2. The Calvin cycle in stroma fixes CO2 into G3P using these products." },
     { questionId: "eq2", answer: "DNA is a double helix of nucleotides connected by hydrogen bonds between complementary bases. Helicase unwinds, primase adds primers, DNA polymerase III synthesizes leading/lagging strands, ligase joins Okazaki fragments." },
     { questionId: "eq3", answer: "Natural selection is the mechanism where organisms with advantageous traits survive and reproduce more. Example: peppered moths darkening during industrial revolution. Example: antibiotic-resistant bacteria surviving treatment." },
     { questionId: "eq4", answer: "Mitosis: one division, 2 diploid cells, for growth. Meiosis: two divisions, 4 haploid gametes, crossing over creates genetic diversity for sexual reproduction." },
   ], submittedAt: "2026-03-03T09:30:00Z", evaluated: true },
-  { id: "sub3", examId: "exam1", studentName: "Carol Davis", studentEmail: "carol@school.edu", answers: [
+  { id: "sub3", examId: "exam1", studentName: "Carol Davis", studentEmail: "carol@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Plants make energy from the sun." },
     { questionId: "eq2", answer: "DNA has genes and stuff. It copies itself." },
     { questionId: "eq3", answer: "Strong animals survive and weak ones die." },
     { questionId: "eq4", answer: "Mitosis and meiosis are types of cell division." },
   ], submittedAt: "2026-03-03T10:00:00Z", evaluated: true },
-  { id: "sub4", examId: "exam2", studentName: "David Lee", studentEmail: "david@school.edu", answers: [
+  { id: "sub4", examId: "exam2", studentName: "David Lee", studentEmail: "david@school.edu", submissionType: "typed", answers: [
     { questionId: "eq5", answer: "First law: objects stay still or moving unless a force acts. Like a ball on grass slows from friction. Second law: F=ma, kicking a ball harder = more acceleration. Third law: action-reaction, swimming pushes water back to move forward." },
     { questionId: "eq6", answer: "Kinetic energy is energy of moving objects, KE = ½mv². Potential energy is stored energy, PE = mgh. Derivation: from work-energy theorem, W = Fd = mad, using v² = 2ad, W = m(v²/2) = ½mv²." },
     { questionId: "eq7", answer: "Electromagnetic induction creates electricity from changing magnetic fields. Faraday's law says induced EMF equals negative rate of change of flux, ε = -dΦ/dt. Used in generators and transformers." },
   ], submittedAt: "2026-03-04T11:00:00Z", evaluated: true },
-  { id: "sub5", examId: "exam2", studentName: "Eva Martinez", studentEmail: "eva@school.edu", answers: [
+  { id: "sub5", examId: "exam2", studentName: "Eva Martinez", studentEmail: "eva@school.edu", submissionType: "typed", answers: [
     { questionId: "eq5", answer: "Newton had three laws about motion. The first is about inertia. The second is F=ma. The third is action-reaction." },
     { questionId: "eq6", answer: "Kinetic energy is when something moves. Potential energy is stored. KE = ½mv²." },
     { questionId: "eq7", answer: "Faraday discovered that magnets can make electricity. This is used in power plants." },
   ], submittedAt: "2026-03-04T11:30:00Z", evaluated: true },
-  { id: "sub6", examId: "exam1", studentName: "Frank Wilson", studentEmail: "frank@school.edu", answers: [
+  { id: "sub6", examId: "exam1", studentName: "Frank Wilson", studentEmail: "frank@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Photosynthesis uses light energy to convert CO2 and water into glucose and oxygen. The light reactions occur in the thylakoid membranes producing ATP and NADPH, while the Calvin cycle in the stroma uses these to fix carbon." },
     { questionId: "eq2", answer: "DNA is a double helix made of nucleotides with four bases. It stores genetic instructions. Replication involves helicase unwinding and polymerase building new strands." },
     { questionId: "eq3", answer: "Natural selection means organisms best adapted to their environment survive and reproduce more. For example, Darwin's finches evolved different beak shapes for different food sources. Also, bacteria can become resistant to antibiotics through natural selection." },
     { questionId: "eq4", answer: "Mitosis produces two identical diploid cells for growth. Meiosis has two divisions producing four haploid gametes with genetic variation through crossing over." },
   ], submittedAt: "2026-03-06T14:00:00Z", evaluated: false },
-  { id: "sub7", examId: "exam2", studentName: "Grace Kim", studentEmail: "grace@school.edu", answers: [
+  { id: "sub7", examId: "exam2", studentName: "Grace Kim", studentEmail: "grace@school.edu", submissionType: "typed", answers: [
     { questionId: "eq5", answer: "Newton's first law says objects at rest stay at rest unless a force acts on them, like a book on a table. Second law is F=ma, meaning more force means more acceleration. Third law says every action has an equal and opposite reaction, like when you push a wall it pushes back." },
     { questionId: "eq6", answer: "Kinetic energy is the energy of motion, KE = ½mv². Potential energy is stored energy due to position, PE = mgh. To derive KE: start with W = Fd, substitute F=ma, and using kinematics v²=2ad, we get W = ½mv²." },
     { questionId: "eq7", answer: "Electromagnetic induction is generating an electric current by changing the magnetic field around a conductor. Faraday's law states that the induced EMF equals the negative rate of change of magnetic flux. This principle is used in electric generators and transformers." },

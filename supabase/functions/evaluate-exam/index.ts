@@ -36,6 +36,8 @@ For each question, you must evaluate every rubric criterion and provide:
 - A semantic similarity score (0.0-1.0) comparing the student answer to the model answer
 - Any misconceptions detected
 - Overall feedback for the question
+- A list of key concepts the student correctly demonstrated (detectedConcepts)
+- A list of important concepts that are missing from the student's answer (missingConcepts)
 
 Be generous for answers that demonstrate understanding even with different wording than the model answer. Be strict about factual errors.`;
 
@@ -103,8 +105,10 @@ Return your evaluation using the evaluate_exam tool.`;
                         },
                         feedback: { type: "string" },
                         semanticSimilarity: { type: "number" },
+                        detectedConcepts: { type: "array", items: { type: "string" } },
+                        missingConcepts: { type: "array", items: { type: "string" } },
                       },
-                      required: ["questionId", "questionNumber", "criterionScores", "misconceptions", "feedback", "semanticSimilarity"],
+                      required: ["questionId", "questionNumber", "criterionScores", "misconceptions", "feedback", "semanticSimilarity", "detectedConcepts", "missingConcepts"],
                       additionalProperties: false,
                     },
                   },
