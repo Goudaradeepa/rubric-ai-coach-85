@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
-import { Plus, Trash2, BookOpen, Users, ClipboardCheck, ChevronRight } from "lucide-react";
+import { Plus, Trash2, BookOpen, Users, ClipboardCheck, Award, FileText } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useEvaluation } from "@/context/EvaluationContext";
 import { Button } from "@/components/ui/button";
@@ -9,16 +9,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import type { RubricCriterion } from "@/types/evaluation";
+import type { ExamQuestion, RubricCriterion } from "@/types/evaluation";
 
 const TeacherDashboard: React.FC = () => {
-  const { questions, submissions, results } = useEvaluation();
+  const { exams, submissions, evaluations, evaluateSubmission } = useEvaluation();
+  const [evaluating, setEvaluating] = useState<string | null>(null);
+
+  const pendingCount = submissions.filter(s => !s.evaluated).length;
+  const avgScore = evaluations.length ? Math.round(evaluations.reduce((s, e) => s + e.percentage, 0) / evaluations.length) : 0;
+
+  const handleEvaluate = async (id: string) => {
+    setEvaluating(id);
+    await evaluateSubmission(id);
+    setEvaluating(null);
+  };
 
   const stats = [
-    { label: "Questions", value: questions.length, icon: BookOpen, color: "bg-accent" },
+    { label: "Exams", value: exams.length, icon: FileText, color: "bg-accent" },
     { label: "Submissions", value: submissions.length, icon: Users, color: "gradient-warm" },
-    { label: "Evaluated", value: results.length, icon: ClipboardCheck, color: "bg-success" },
-    { label: "Avg Score", value: results.length ? `${Math.round(results.reduce((s, r) => s + r.percentage, 0) / results.length)}%` : "—", icon: ChevronRight, color: "bg-info" },
+    { label: "Evaluated", value: evaluations.length, icon: ClipboardCheck, color: "bg-success" },
+    { label: "Avg Score", value: evaluations.length ? `${avgScore}%` : "—", icon: Award, color: "bg-info" },
   ];
 
   return (
@@ -26,9 +36,9 @@ const TeacherDashboard: React.FC = () => {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="font-heading text-3xl font-bold text-foreground">Teacher Dashboard</h1>
-          <p className="mt-1 text-muted-foreground">Manage questions, rubrics, and review submissions</p>
+          <p className="mt-1 text-muted-foreground">Create exams, manage submissions, and review AI evaluations</p>
         </div>
-        <CreateQuestionDialog />
+        <CreateExamDialog />
       </div>
 
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
@@ -49,41 +59,49 @@ const TeacherDashboard: React.FC = () => {
         ))}
       </div>
 
+      {/* Exams list */}
       <div>
-        <h2 className="font-heading text-xl font-semibold text-foreground mb-4">Questions & Rubrics</h2>
+        <h2 className="font-heading text-xl font-semibold text-foreground mb-4">Exam Papers</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          {questions.map((q, i) => (
-            <motion.div key={q.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}>
-              <Card className="shadow-card hover:shadow-card-hover transition-shadow">
-                <CardHeader className="pb-3">
-                  <CardTitle className="font-heading text-lg">{q.title}</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <p className="text-sm text-muted-foreground line-clamp-2">{q.questionText}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {q.rubricCriteria.map(c => (
-                      <span key={c.id} className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">
-                        {c.name} ({c.maxScore}pts)
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex items-center justify-between pt-2 border-t border-border">
-                    <span className="text-sm text-muted-foreground">
-                      {submissions.filter(s => s.questionId === q.id).length} submissions
-                    </span>
-                    <span className="text-sm font-medium text-foreground">{q.totalPoints} total pts</span>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          ))}
+          {exams.map((exam, i) => {
+            const examSubs = submissions.filter(s => s.examId === exam.id);
+            const examEvals = evaluations.filter(e => e.examId === exam.id);
+            return (
+              <motion.div key={exam.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + i * 0.1 }}>
+                <Card className="shadow-card hover:shadow-card-hover transition-shadow">
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="font-heading text-lg">{exam.title}</CardTitle>
+                      <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">{exam.subject}</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div className="flex gap-4 text-sm text-muted-foreground">
+                      <span>{exam.questions.length} questions</span>
+                      <span>{exam.totalMarks} marks</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {exam.questions.map(q => (
+                        <span key={q.id} className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          Q{q.questionNumber}: {q.marks}pts
+                        </span>
+                      ))}
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-border">
+                      <span className="text-sm text-muted-foreground">{examSubs.length} submissions</span>
+                      <span className="text-sm text-muted-foreground">{examEvals.length} evaluated</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            );
+          })}
         </div>
       </div>
 
+      {/* Submissions table */}
       <div>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="font-heading text-xl font-semibold text-foreground">Recent Submissions</h2>
-        </div>
+        <h2 className="font-heading text-xl font-semibold text-foreground mb-4">All Submissions</h2>
         <Card className="shadow-card">
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -91,30 +109,43 @@ const TeacherDashboard: React.FC = () => {
                 <thead>
                   <tr className="border-b border-border bg-muted/50">
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Student</th>
-                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Question</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Exam</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Status</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Score</th>
+                    <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Grade</th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {submissions.map(sub => {
-                    const question = questions.find(q => q.id === sub.questionId);
-                    const result = results.find(r => r.submissionId === sub.id);
+                    const exam = exams.find(e => e.id === sub.examId);
+                    const evaluation = evaluations.find(e => e.submissionId === sub.id);
                     return (
                       <tr key={sub.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                         <td className="px-4 py-3 text-sm font-medium text-foreground">{sub.studentName}</td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{question?.title ?? "—"}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">{exam?.title ?? "—"}</td>
                         <td className="px-4 py-3">
                           <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${sub.evaluated ? "bg-success/10 text-success" : "bg-warning/10 text-warning"}`}>
                             {sub.evaluated ? "Evaluated" : "Pending"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-sm font-medium text-foreground">{result ? `${result.percentage}%` : "—"}</td>
+                        <td className="px-4 py-3 text-sm font-medium text-foreground">{evaluation ? `${evaluation.totalScore}/${evaluation.totalPossible}` : "—"}</td>
                         <td className="px-4 py-3">
-                          {result && (
-                            <Link to={`/results?id=${sub.id}`} className="text-sm font-medium text-accent hover:underline">
-                              View →
+                          {evaluation && (
+                            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-bold ${evaluation.percentage >= 80 ? "bg-success/10 text-success" : evaluation.percentage >= 60 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"}`}>
+                              {evaluation.grade}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 flex gap-2">
+                          {!sub.evaluated && (
+                            <Button size="sm" variant="outline" onClick={() => handleEvaluate(sub.id)} disabled={evaluating === sub.id}>
+                              {evaluating === sub.id ? "Evaluating..." : "Evaluate"}
+                            </Button>
+                          )}
+                          {evaluation && (
+                            <Link to={`/results?id=${sub.id}`} className="text-sm font-medium text-accent hover:underline leading-8">
+                              View Results →
                             </Link>
                           )}
                         </td>
@@ -131,86 +162,123 @@ const TeacherDashboard: React.FC = () => {
   );
 };
 
-const CreateQuestionDialog: React.FC = () => {
-  const { addQuestion } = useEvaluation();
+/* ── Create Exam Dialog ── */
+
+interface DraftQuestion {
+  questionText: string;
+  modelAnswer: string;
+  marks: number;
+  criteria: { name: string; description: string; maxScore: number }[];
+}
+
+const emptyDraftQuestion = (): DraftQuestion => ({
+  questionText: "", modelAnswer: "", marks: 10,
+  criteria: [{ name: "", description: "", maxScore: 5 }],
+});
+
+const CreateExamDialog: React.FC = () => {
+  const { addExam } = useEvaluation();
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
-  const [questionText, setQuestionText] = useState("");
-  const [modelAnswer, setModelAnswer] = useState("");
-  const [criteria, setCriteria] = useState<Omit<RubricCriterion, "id">[]>([
-    { name: "", description: "", maxScore: 10, weight: 1 },
-  ]);
+  const [subject, setSubject] = useState("");
+  const [draftQuestions, setDraftQuestions] = useState<DraftQuestion[]>([emptyDraftQuestion()]);
 
-  const addCriterion = () => setCriteria(prev => [...prev, { name: "", description: "", maxScore: 10, weight: 1 }]);
-  const removeCriterion = (i: number) => setCriteria(prev => prev.filter((_, idx) => idx !== i));
-  const updateCriterion = (i: number, field: string, value: string | number) =>
-    setCriteria(prev => prev.map((c, idx) => (idx === i ? { ...c, [field]: value } : c)));
+  const updateQ = (qi: number, field: keyof DraftQuestion, value: unknown) =>
+    setDraftQuestions(prev => prev.map((q, i) => i === qi ? { ...q, [field]: value } : q));
+
+  const updateCriterion = (qi: number, ci: number, field: string, value: string | number) =>
+    setDraftQuestions(prev => prev.map((q, i) =>
+      i === qi ? { ...q, criteria: q.criteria.map((c, j) => j === ci ? { ...c, [field]: value } : c) } : q
+    ));
+
+  const addCriterion = (qi: number) =>
+    setDraftQuestions(prev => prev.map((q, i) =>
+      i === qi ? { ...q, criteria: [...q.criteria, { name: "", description: "", maxScore: 5 }] } : q
+    ));
+
+  const removeCriterion = (qi: number, ci: number) =>
+    setDraftQuestions(prev => prev.map((q, i) =>
+      i === qi ? { ...q, criteria: q.criteria.filter((_, j) => j !== ci) } : q
+    ));
 
   const handleSubmit = () => {
-    if (!title || !questionText || !modelAnswer || criteria.some(c => !c.name)) return;
-    addQuestion({
-      title,
-      questionText,
-      modelAnswer,
-      rubricCriteria: criteria.map(c => ({ ...c, id: crypto.randomUUID() })),
-    });
+    if (!title || !subject || draftQuestions.some(q => !q.questionText || !q.modelAnswer || q.criteria.some(c => !c.name))) return;
+    const questions: ExamQuestion[] = draftQuestions.map((dq, i) => ({
+      id: crypto.randomUUID(),
+      questionNumber: i + 1,
+      questionText: dq.questionText,
+      modelAnswer: dq.modelAnswer,
+      marks: dq.marks,
+      rubricCriteria: dq.criteria.map(c => ({ id: crypto.randomUUID(), ...c })),
+    }));
+    addExam({ title, subject, questions });
     setOpen(false);
-    setTitle("");
-    setQuestionText("");
-    setModelAnswer("");
-    setCriteria([{ name: "", description: "", maxScore: 10, weight: 1 }]);
+    setTitle(""); setSubject(""); setDraftQuestions([emptyDraftQuestion()]);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button className="gradient-accent text-accent-foreground border-0">
-          <Plus className="mr-2 h-4 w-4" /> New Question
+          <Plus className="mr-2 h-4 w-4" /> New Exam
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="font-heading">Create New Question</DialogTitle>
+          <DialogTitle className="font-heading">Create Exam Paper</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 pt-4">
-          <div>
-            <Label>Title</Label>
-            <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Photosynthesis Process" />
+        <div className="space-y-6 pt-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div><Label>Exam Title</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Biology Mid-Term" /></div>
+            <div><Label>Subject</Label><Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="e.g. Biology" /></div>
           </div>
-          <div>
-            <Label>Question</Label>
-            <Textarea value={questionText} onChange={e => setQuestionText(e.target.value)} placeholder="Enter the question..." rows={3} />
-          </div>
-          <div>
-            <Label>Model Answer</Label>
-            <Textarea value={modelAnswer} onChange={e => setModelAnswer(e.target.value)} placeholder="Enter the ideal answer..." rows={4} />
-          </div>
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <Label>Rubric Criteria</Label>
-              <Button variant="outline" size="sm" onClick={addCriterion}>
-                <Plus className="mr-1 h-3 w-3" /> Add
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {criteria.map((c, i) => (
-                <div key={i} className="flex gap-2 items-start rounded-lg border border-border p-3">
-                  <div className="flex-1 space-y-2">
-                    <Input placeholder="Criterion name" value={c.name} onChange={e => updateCriterion(i, "name", e.target.value)} />
-                    <Input placeholder="Description" value={c.description} onChange={e => updateCriterion(i, "description", e.target.value)} />
+
+          {draftQuestions.map((dq, qi) => (
+            <Card key={qi} className="border border-border">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="font-heading text-base">Question {qi + 1}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs">Marks:</Label>
+                    <Input type="number" className="w-16 h-8" value={dq.marks} onChange={e => updateQ(qi, "marks", +e.target.value)} />
+                    {draftQuestions.length > 1 && (
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setDraftQuestions(prev => prev.filter((_, i) => i !== qi))}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    )}
                   </div>
-                  <Input type="number" className="w-20" value={c.maxScore} onChange={e => updateCriterion(i, "maxScore", +e.target.value)} />
-                  {criteria.length > 1 && (
-                    <Button variant="ghost" size="icon" onClick={() => removeCriterion(i)}>
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    </Button>
-                  )}
                 </div>
-              ))}
-            </div>
-          </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Textarea placeholder="Question text..." value={dq.questionText} onChange={e => updateQ(qi, "questionText", e.target.value)} rows={2} />
+                <Textarea placeholder="Model answer..." value={dq.modelAnswer} onChange={e => updateQ(qi, "modelAnswer", e.target.value)} rows={3} />
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label className="text-xs">Rubric Criteria</Label>
+                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => addCriterion(qi)}><Plus className="mr-1 h-3 w-3" />Add</Button>
+                  </div>
+                  {dq.criteria.map((c, ci) => (
+                    <div key={ci} className="flex gap-2 items-center mb-2">
+                      <Input placeholder="Criterion" value={c.name} onChange={e => updateCriterion(qi, ci, "name", e.target.value)} className="h-8 text-sm" />
+                      <Input type="number" className="w-16 h-8" value={c.maxScore} onChange={e => updateCriterion(qi, ci, "maxScore", +e.target.value)} />
+                      {dq.criteria.length > 1 && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => removeCriterion(qi, ci)}>
+                          <Trash2 className="h-3 w-3 text-destructive" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+
+          <Button variant="outline" className="w-full" onClick={() => setDraftQuestions(prev => [...prev, emptyDraftQuestion()])}>
+            <Plus className="mr-2 h-4 w-4" /> Add Question
+          </Button>
+
           <Button onClick={handleSubmit} className="w-full gradient-accent text-accent-foreground border-0">
-            Create Question
+            Create Exam ({draftQuestions.reduce((s, q) => s + q.marks, 0)} total marks)
           </Button>
         </div>
       </DialogContent>

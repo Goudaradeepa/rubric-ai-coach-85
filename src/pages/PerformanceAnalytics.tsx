@@ -7,67 +7,63 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const COLORS = ["hsl(174, 60%, 40%)", "hsl(222, 60%, 22%)", "hsl(38, 92%, 50%)", "hsl(152, 60%, 40%)", "hsl(0, 72%, 51%)"];
 
 const PerformanceAnalytics: React.FC = () => {
-  const { results, questions } = useEvaluation();
+  const { evaluations, exams } = useEvaluation();
 
-  // Score distribution
   const distribution = [
-    { range: "0-20%", count: results.filter(r => r.percentage <= 20).length },
-    { range: "21-40%", count: results.filter(r => r.percentage > 20 && r.percentage <= 40).length },
-    { range: "41-60%", count: results.filter(r => r.percentage > 40 && r.percentage <= 60).length },
-    { range: "61-80%", count: results.filter(r => r.percentage > 60 && r.percentage <= 80).length },
-    { range: "81-100%", count: results.filter(r => r.percentage > 80).length },
+    { range: "0-20%", count: evaluations.filter(e => e.percentage <= 20).length },
+    { range: "21-40%", count: evaluations.filter(e => e.percentage > 20 && e.percentage <= 40).length },
+    { range: "41-60%", count: evaluations.filter(e => e.percentage > 40 && e.percentage <= 60).length },
+    { range: "61-80%", count: evaluations.filter(e => e.percentage > 60 && e.percentage <= 80).length },
+    { range: "81-100%", count: evaluations.filter(e => e.percentage > 80).length },
   ];
 
-  // Per-question averages
-  const questionAvgs = questions.map(q => {
-    const qResults = results.filter(r => r.questionId === q.id);
-    const avg = qResults.length ? Math.round(qResults.reduce((s, r) => s + r.percentage, 0) / qResults.length) : 0;
-    return { name: q.title.slice(0, 20), average: avg, count: qResults.length };
+  const examAvgs = exams.map(ex => {
+    const exEvals = evaluations.filter(e => e.examId === ex.id);
+    const avg = exEvals.length ? Math.round(exEvals.reduce((s, e) => s + e.percentage, 0) / exEvals.length) : 0;
+    return { name: ex.title.slice(0, 18), average: avg, students: exEvals.length };
   });
 
-  // Grade breakdown
   const grades = [
-    { name: "A (80-100%)", value: results.filter(r => r.percentage >= 80).length },
-    { name: "B (60-79%)", value: results.filter(r => r.percentage >= 60 && r.percentage < 80).length },
-    { name: "C (40-59%)", value: results.filter(r => r.percentage >= 40 && r.percentage < 60).length },
-    { name: "F (<40%)", value: results.filter(r => r.percentage < 40).length },
+    { name: "A/A+ (80-100%)", value: evaluations.filter(e => e.percentage >= 80).length },
+    { name: "B (70-79%)", value: evaluations.filter(e => e.percentage >= 70 && e.percentage < 80).length },
+    { name: "C (60-69%)", value: evaluations.filter(e => e.percentage >= 60 && e.percentage < 70).length },
+    { name: "D/F (<60%)", value: evaluations.filter(e => e.percentage < 60).length },
   ].filter(g => g.value > 0);
 
-  // Criterion averages across all results (radar)
-  const criteriaMap = new Map<string, { total: number; count: number; max: number }>();
-  results.forEach(r => r.criterionScores.forEach(cs => {
-    const prev = criteriaMap.get(cs.criterionName) || { total: 0, count: 0, max: cs.maxScore };
-    criteriaMap.set(cs.criterionName, { total: prev.total + cs.score, count: prev.count + 1, max: cs.maxScore });
+  // Per-question performance across all evaluations
+  const qPerfMap = new Map<string, { total: number; count: number; label: string }>();
+  evaluations.forEach(ev => ev.questionEvaluations.forEach(qe => {
+    const key = `Q${qe.questionNumber}`;
+    const prev = qPerfMap.get(key) || { total: 0, count: 0, label: key };
+    qPerfMap.set(key, { total: prev.total + qe.percentage, count: prev.count + 1, label: key });
   }));
-  const radarData = Array.from(criteriaMap.entries()).map(([name, v]) => ({
-    criterion: name.slice(0, 15),
-    score: Math.round((v.total / v.count / v.max) * 100),
-  }));
-
-  // Similarity vs Score scatter (line chart)
-  const similarityData = results.map(r => ({
-    name: r.studentName.split(" ")[0],
-    similarity: Math.round(r.semanticSimilarity * 100),
-    score: r.percentage,
+  const radarData = Array.from(qPerfMap.entries()).map(([, v]) => ({
+    question: v.label,
+    score: Math.round(v.total / v.count),
   }));
 
-  const avgScore = results.length ? Math.round(results.reduce((s, r) => s + r.percentage, 0) / results.length) : 0;
-  const avgSimilarity = results.length ? Math.round(results.reduce((s, r) => s + r.semanticSimilarity, 0) / results.length * 100) : 0;
-  const totalMisconceptions = results.reduce((s, r) => s + r.misconceptions.length, 0);
+  const studentPerf = evaluations.map(e => ({
+    name: e.studentName.split(" ")[0],
+    score: e.percentage,
+    similarity: Math.round(e.questionEvaluations.reduce((s, q) => s + q.semanticSimilarity, 0) / e.questionEvaluations.length * 100),
+  }));
+
+  const avgScore = evaluations.length ? Math.round(evaluations.reduce((s, e) => s + e.percentage, 0) / evaluations.length) : 0;
+  const totalMisconceptions = evaluations.reduce((s, e) => s + e.overallMisconceptions.length, 0);
+  const passRate = evaluations.length ? Math.round(evaluations.filter(e => e.percentage >= 50).length / evaluations.length * 100) : 0;
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-3xl font-bold text-foreground">Performance Analytics</h1>
-        <p className="mt-1 text-muted-foreground">Insights and trends across all evaluations</p>
+        <p className="mt-1 text-muted-foreground">Insights across all exams and students</p>
       </div>
 
-      {/* Summary stats */}
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {[
           { label: "Average Score", value: `${avgScore}%`, color: "bg-accent" },
-          { label: "Total Evaluations", value: results.length, color: "gradient-primary" },
-          { label: "Avg Similarity", value: `${avgSimilarity}%`, color: "bg-info" },
+          { label: "Pass Rate", value: `${passRate}%`, color: "bg-success" },
+          { label: "Total Evaluations", value: evaluations.length, color: "gradient-primary" },
           { label: "Misconceptions", value: totalMisconceptions, color: "gradient-warm" },
         ].map((stat, i) => (
           <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
@@ -82,7 +78,6 @@ const PerformanceAnalytics: React.FC = () => {
         ))}
       </div>
 
-      {/* Charts */}
       <div className="grid gap-6 md:grid-cols-2">
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
           <Card className="shadow-card">
@@ -119,12 +114,12 @@ const PerformanceAnalytics: React.FC = () => {
 
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.5 }}>
           <Card className="shadow-card">
-            <CardHeader><CardTitle className="font-heading text-base">Criteria Performance</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="font-heading text-base">Question-wise Performance</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
                 <RadarChart data={radarData}>
                   <PolarGrid stroke="hsl(220, 16%, 88%)" />
-                  <PolarAngleAxis dataKey="criterion" tick={{ fontSize: 11, fill: "hsl(220, 10%, 46%)" }} />
+                  <PolarAngleAxis dataKey="question" tick={{ fontSize: 11, fill: "hsl(220, 10%, 46%)" }} />
                   <PolarRadiusAxis domain={[0, 100]} tick={{ fontSize: 10 }} />
                   <Radar dataKey="score" stroke="hsl(174, 60%, 40%)" fill="hsl(174, 60%, 40%)" fillOpacity={0.3} />
                 </RadarChart>
@@ -138,7 +133,7 @@ const PerformanceAnalytics: React.FC = () => {
             <CardHeader><CardTitle className="font-heading text-base">Score vs Semantic Similarity</CardTitle></CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={250}>
-                <LineChart data={similarityData}>
+                <LineChart data={studentPerf}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 16%, 88%)" />
                   <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(220, 10%, 46%)" }} />
                   <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: "hsl(220, 10%, 46%)" }} />
@@ -152,8 +147,26 @@ const PerformanceAnalytics: React.FC = () => {
         </motion.div>
       </div>
 
-      {/* Student leaderboard */}
+      {/* Exam averages */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.7 }}>
+        <Card className="shadow-card">
+          <CardHeader><CardTitle className="font-heading text-base">Exam Averages</CardTitle></CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={200}>
+              <BarChart data={examAvgs}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(220, 16%, 88%)" />
+                <XAxis dataKey="name" tick={{ fontSize: 12, fill: "hsl(220, 10%, 46%)" }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 12, fill: "hsl(220, 10%, 46%)" }} />
+                <Tooltip />
+                <Bar dataKey="average" fill="hsl(222, 60%, 22%)" radius={[6, 6, 0, 0]} name="Avg %" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      </motion.div>
+
+      {/* Student rankings */}
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.8 }}>
         <Card className="shadow-card">
           <CardHeader><CardTitle className="font-heading text-base">Student Rankings</CardTitle></CardHeader>
           <CardContent className="p-0">
@@ -162,25 +175,27 @@ const PerformanceAnalytics: React.FC = () => {
                 <tr className="border-b border-border bg-muted/50">
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Rank</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Student</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Exam</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Score</th>
-                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Similarity</th>
+                  <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Grade</th>
                   <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">Misconceptions</th>
                 </tr>
               </thead>
               <tbody>
-                {[...results].sort((a, b) => b.percentage - a.percentage).map((r, i) => (
-                  <tr key={r.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                {[...evaluations].sort((a, b) => b.percentage - a.percentage).map((e, i) => (
+                  <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
-                      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === 0 ? "gradient-warm text-primary-foreground" : i === 1 ? "bg-muted text-foreground" : "bg-muted/50 text-muted-foreground"}`}>
+                      <span className={`inline-flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${i === 0 ? "gradient-warm text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
                         {i + 1}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-sm font-medium text-foreground">{r.studentName}</td>
-                    <td className="px-4 py-3 text-sm font-bold" style={{ color: r.percentage >= 80 ? "hsl(152, 60%, 40%)" : r.percentage >= 60 ? "hsl(38, 92%, 50%)" : "hsl(0, 72%, 51%)" }}>
-                      {r.percentage}%
+                    <td className="px-4 py-3 text-sm font-medium text-foreground">{e.studentName}</td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{e.examTitle}</td>
+                    <td className="px-4 py-3 text-sm font-bold" style={{ color: e.percentage >= 80 ? "hsl(152, 60%, 40%)" : e.percentage >= 60 ? "hsl(38, 92%, 50%)" : "hsl(0, 72%, 51%)" }}>
+                      {e.totalScore}/{e.totalPossible} ({e.percentage}%)
                     </td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{Math.round(r.semanticSimilarity * 100)}%</td>
-                    <td className="px-4 py-3 text-sm text-muted-foreground">{r.misconceptions.length}</td>
+                    <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${e.percentage >= 80 ? "bg-success/10 text-success" : e.percentage >= 60 ? "bg-warning/10 text-warning" : "bg-destructive/10 text-destructive"}`}>{e.grade}</span></td>
+                    <td className="px-4 py-3 text-sm text-muted-foreground">{e.overallMisconceptions.length}</td>
                   </tr>
                 ))}
               </tbody>
