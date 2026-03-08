@@ -117,7 +117,7 @@ export const mockSubmissions: ExamSubmission[] = [
     { questionId: "eq3", answer: "Natural selection is survival of the fittest. Animals that are better adapted survive. Like how cheetahs are fast to catch prey." },
     { questionId: "eq4", answer: "Mitosis makes two identical cells. Meiosis makes four different cells with half the chromosomes for reproduction." },
   ], submittedAt: "2026-03-03T09:00:00Z", evaluated: true },
-  { id: "sub2", examId: "exam1", studentName: "Bob Chen", studentEmail: "bob@school.edu", answers: [
+  { id: "sub2", examId: "exam1", studentName: "Bob Chen", studentEmail: "bob@school.edu", submissionType: "typed", answers: [
     { questionId: "eq1", answer: "Photosynthesis converts light to chemical energy. In thylakoid membranes, light-dependent reactions split H2O producing ATP, NADPH, O2. The Calvin cycle in stroma fixes CO2 into G3P using these products." },
     { questionId: "eq2", answer: "DNA is a double helix of nucleotides connected by hydrogen bonds between complementary bases. Helicase unwinds, primase adds primers, DNA polymerase III synthesizes leading/lagging strands, ligase joins Okazaki fragments." },
     { questionId: "eq3", answer: "Natural selection is the mechanism where organisms with advantageous traits survive and reproduce more. Example: peppered moths darkening during industrial revolution. Example: antibiotic-resistant bacteria surviving treatment." },
