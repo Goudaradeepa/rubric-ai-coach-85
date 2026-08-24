@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useCallback } from "react";
-import type { Exam, ExamSubmission, ExamEvaluation, ExamQuestion } from "@/types/evaluation";
+import type { Exam, ExamSubmission, ExamEvaluation, ExamQuestion, ReviewQueueItem } from "@/types/evaluation";
 import { mockExams, mockSubmissions, mockEvaluations } from "@/data/mockData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -12,6 +12,9 @@ interface EvaluationContextType {
   addSubmission: (sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => void;
   evaluateSubmission: (submissionId: string) => Promise<void>;
   addTeacherEvaluation: (evaluation: ExamEvaluation) => void;
+  reviewQueue: ReviewQueueItem[];
+  addReviewItem: (item: Omit<ReviewQueueItem, "id" | "createdAt" | "status">) => void;
+  resolveReviewItem: (id: string, finalMarks: number, comment: string, action: "accepted" | "modified") => void;
   getExamById: (id: string) => Exam | undefined;
   getEvaluationBySubmissionId: (id: string) => ExamEvaluation | undefined;
   getStudentEvaluations: (email: string) => ExamEvaluation[];
@@ -29,6 +32,18 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const [exams, setExams] = useState<Exam[]>(mockExams);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>(mockSubmissions);
   const [evaluations, setEvaluations] = useState<ExamEvaluation[]>(mockEvaluations);
+  const [reviewQueue, setReviewQueue] = useState<ReviewQueueItem[]>([]);
+
+  const addReviewItem = useCallback((item: Omit<ReviewQueueItem, "id" | "createdAt" | "status">) => {
+    setReviewQueue(prev => [
+      ...prev.filter(r => !(r.questionId === item.questionId && r.studentName === item.studentName)),
+      { ...item, id: crypto.randomUUID(), createdAt: new Date().toISOString(), status: "pending" as const },
+    ]);
+  }, []);
+
+  const resolveReviewItem = useCallback((id: string, finalMarks: number, comment: string, action: "accepted" | "modified") => {
+    setReviewQueue(prev => prev.map(r => r.id === id ? { ...r, status: action, finalMarks, teacherComment: comment } : r));
+  }, []);
 
   const addExam = useCallback((exam: Omit<Exam, "id" | "createdAt" | "totalMarks">) => {
     const totalMarks = exam.questions.reduce((s, q) => s + q.marks, 0);
@@ -147,7 +162,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const getStudentEvaluations = useCallback((email: string) => evaluations.filter(e => e.studentEmail === email), [evaluations]);
 
   return (
-    <EvaluationContext.Provider value={{ exams, submissions, evaluations, addExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
+    <EvaluationContext.Provider value={{ exams, submissions, evaluations, reviewQueue, addReviewItem, resolveReviewItem, addExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
       {children}
     </EvaluationContext.Provider>
   );
