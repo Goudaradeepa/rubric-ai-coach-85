@@ -3,6 +3,7 @@ export interface RubricCriterion {
   name: string;
   description: string;
   maxScore: number;
+  expectedConcept?: string;
 }
 
 export interface ExamQuestion {
@@ -12,6 +13,36 @@ export interface ExamQuestion {
   modelAnswer: string;
   marks: number;
   rubricCriteria: RubricCriterion[];
+  // Question-paper structure
+  module?: string;
+  subQuestion?: string;
+  bloomLevel?: string;
+  courseOutcome?: string;
+  orGroup?: string;
+  rubricApproved?: boolean;
+}
+
+export interface ReviewQueueItem {
+  id: string;
+  studentName: string;
+  rollNumber: string;
+  examId: string;
+  examTitle: string;
+  module?: string;
+  questionId: string;
+  questionNumber: number;
+  questionText: string;
+  extractedText: string;
+  maxMarks: number;
+  aiMarks: number;
+  confidenceScore: number;
+  confidenceLevel: string;
+  explanation: string;
+  criterionScores: QuestionCriterionScore[];
+  status: "pending" | "accepted" | "modified";
+  finalMarks?: number;
+  teacherComment?: string;
+  createdAt: string;
 }
 
 export interface Exam {
