@@ -12,6 +12,7 @@ import EvaluationResults from "@/pages/EvaluationResults";
 import PerformanceAnalytics from "@/pages/PerformanceAnalytics";
 import TeacherUploadEvaluation from "@/pages/TeacherUploadEvaluation";
 import TeacherBulkEvaluation from "@/pages/TeacherBulkEvaluation";
+import StudentsAnswers from "@/pages/StudentsAnswers";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
