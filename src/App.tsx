@@ -29,6 +29,7 @@ const App = () => (
               <Route path="/" element={<TeacherDashboard />} />
               <Route path="/teacher-evaluate" element={<TeacherUploadEvaluation />} />
               <Route path="/bulk-evaluate" element={<TeacherBulkEvaluation />} />
+              <Route path="/students-answers" element={<StudentsAnswers />} />
               <Route path="/submit" element={<StudentSubmission />} />
               <Route path="/student" element={<StudentDashboard />} />
               <Route path="/results" element={<EvaluationResults />} />
