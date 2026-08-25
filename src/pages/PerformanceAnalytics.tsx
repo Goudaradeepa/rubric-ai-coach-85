@@ -78,6 +78,35 @@ const PerformanceAnalytics: React.FC = () => {
     }))
     .sort((a, b) => a.avgScore - b.avgScore);
 
+  // --- Module / Bloom / CO analytics ---
+  const questionMeta = new Map<string, { module?: string; bloomLevel?: string; courseOutcome?: string }>();
+  exams.forEach(ex => ex.questions.forEach(q => questionMeta.set(q.id, {
+    module: q.module, bloomLevel: q.bloomLevel, courseOutcome: q.courseOutcome,
+  })));
+
+  const aggregateBy = (field: "module" | "bloomLevel" | "courseOutcome") => {
+    const map = new Map<string, { score: number; max: number; count: number }>();
+    evaluations.forEach(ev => ev.questionEvaluations.forEach(qe => {
+      const key = questionMeta.get(qe.questionId)?.[field];
+      if (!key) return;
+      const prev = map.get(key) || { score: 0, max: 0, count: 0 };
+      map.set(key, { score: prev.score + qe.score, max: prev.max + qe.maxMarks, count: prev.count + 1 });
+    }));
+    return Array.from(map.entries())
+      .map(([name, v]) => ({
+        name,
+        short: name.length > 18 ? name.slice(0, 18) + "…" : name,
+        avgPercent: v.max ? Math.round((v.score / v.max) * 100) : 0,
+        attempts: v.count,
+      }))
+      .sort((a, b) => b.avgPercent - a.avgPercent);
+  };
+
+  const moduleData = aggregateBy("module");
+  const bloomData = aggregateBy("bloomLevel");
+  const coData = aggregateBy("courseOutcome");
+  const weakestModule = moduleData.length ? moduleData[moduleData.length - 1] : null;
+
   // --- Top Performing Students (new) ---
   const studentScores = new Map<string, { total: number; count: number; name: string }>();
   evaluations.forEach(ev => {
