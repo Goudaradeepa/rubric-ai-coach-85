@@ -59,7 +59,7 @@ interface AnswerEvaluation {
 }
 
 const StudentsAnswers: React.FC = () => {
-  const { exams } = useEvaluation();
+  const { exams, addReviewItem } = useEvaluation();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState("");
@@ -194,6 +194,27 @@ const StudentsAnswers: React.FC = () => {
 
       const evaluation: AnswerEvaluation = { evaluationId: crypto.randomUUID(), ...data };
       setEvaluations(prev => ({ ...prev, [row.answerId]: evaluation }));
+
+      // Low-confidence cases are routed to the teacher Review Queue
+      if (evaluation.requiresTeacherReview || evaluation.confidenceLevel?.toLowerCase() === "low") {
+        addReviewItem({
+          studentName: student?.name || "Unknown",
+          rollNumber: student?.rollNumber || "—",
+          examId: exam?.id || "",
+          examTitle: exam?.title || "",
+          module: question.module,
+          questionId: row.questionId,
+          questionNumber: row.questionNumber,
+          questionText: row.questionText,
+          extractedText: row.extractedText,
+          maxMarks: row.marks,
+          aiMarks: evaluation.totalScore,
+          confidenceScore: evaluation.confidenceScore,
+          confidenceLevel: evaluation.confidenceLevel,
+          explanation: evaluation.feedback,
+          criterionScores: evaluation.criterionScores,
+        });
+      }
       setReviewDraft(prev => ({
         ...prev,
         [row.answerId]: { finalMarks: String(evaluation.totalScore ?? ""), comment: "" },

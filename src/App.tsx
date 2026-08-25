@@ -13,6 +13,8 @@ import PerformanceAnalytics from "@/pages/PerformanceAnalytics";
 import TeacherUploadEvaluation from "@/pages/TeacherUploadEvaluation";
 import TeacherBulkEvaluation from "@/pages/TeacherBulkEvaluation";
 import StudentsAnswers from "@/pages/StudentsAnswers";
+import QuestionPaperProcessing from "@/pages/QuestionPaperProcessing";
+import ReviewQueue from "@/pages/ReviewQueue";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,6 +31,8 @@ const App = () => (
               <Route path="/" element={<TeacherDashboard />} />
               <Route path="/teacher-evaluate" element={<TeacherUploadEvaluation />} />
               <Route path="/bulk-evaluate" element={<TeacherBulkEvaluation />} />
+              <Route path="/question-paper" element={<QuestionPaperProcessing />} />
+              <Route path="/review" element={<ReviewQueue />} />
               <Route path="/students-answers" element={<StudentsAnswers />} />
               <Route path="/submit" element={<StudentSubmission />} />
               <Route path="/student" element={<StudentDashboard />} />
