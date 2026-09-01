@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
 import type { Exam, ExamSubmission, ExamEvaluation, ExamQuestion, ReviewQueueItem } from "@/types/evaluation";
 import { mockExams, mockSubmissions, mockEvaluations } from "@/data/mockData";
 import { supabase } from "@/integrations/supabase/client";
@@ -20,6 +20,25 @@ interface EvaluationContextType {
   getStudentEvaluations: (email: string) => ExamEvaluation[];
 }
 
+const STORAGE_PREFIX = "evalai:";
+
+function load<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(STORAGE_PREFIX + key);
+    return raw ? (JSON.parse(raw) as T) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+function save(key: string, value: unknown) {
+  try {
+    localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 const EvaluationContext = createContext<EvaluationContextType | null>(null);
 
 export const useEvaluation = () => {
@@ -29,10 +48,15 @@ export const useEvaluation = () => {
 };
 
 export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [exams, setExams] = useState<Exam[]>(mockExams);
-  const [submissions, setSubmissions] = useState<ExamSubmission[]>(mockSubmissions);
-  const [evaluations, setEvaluations] = useState<ExamEvaluation[]>(mockEvaluations);
-  const [reviewQueue, setReviewQueue] = useState<ReviewQueueItem[]>([]);
+  const [exams, setExams] = useState<Exam[]>(() => load("exams", mockExams));
+  const [submissions, setSubmissions] = useState<ExamSubmission[]>(() => load("submissions", mockSubmissions));
+  const [evaluations, setEvaluations] = useState<ExamEvaluation[]>(() => load("evaluations", mockEvaluations));
+  const [reviewQueue, setReviewQueue] = useState<ReviewQueueItem[]>(() => load<ReviewQueueItem[]>("reviewQueue", []));
+
+  useEffect(() => { save("exams", exams); }, [exams]);
+  useEffect(() => { save("submissions", submissions); }, [submissions]);
+  useEffect(() => { save("evaluations", evaluations); }, [evaluations]);
+  useEffect(() => { save("reviewQueue", reviewQueue); }, [reviewQueue]);
 
   const addReviewItem = useCallback((item: Omit<ReviewQueueItem, "id" | "createdAt" | "status">) => {
     setReviewQueue(prev => [
