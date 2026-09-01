@@ -21,6 +21,7 @@ interface Student {
   id: string;
   name: string;
   rollNumber: string;
+  email: string;
 }
 
 interface ExtractedAnswer {
@@ -59,16 +60,20 @@ interface AnswerEvaluation {
 }
 
 const StudentsAnswers: React.FC = () => {
-  const { exams, addReviewItem } = useEvaluation();
+  const { exams, addReviewItem, addTeacherEvaluation } = useEvaluation();
 
   const [students, setStudents] = useState<Student[]>([]);
   const [selectedStudent, setSelectedStudent] = useState("");
   const [newName, setNewName] = useState("");
   const [newRoll, setNewRoll] = useState("");
+  const [newEmail, setNewEmail] = useState("");
   const [selectedExam, setSelectedExam] = useState("");
 
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
+  const [sheetUrl, setSheetUrl] = useState<string | null>(null);
+  const [ocrFullText, setOcrFullText] = useState<string>("");
+  const [saved, setSaved] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [processed, setProcessed] = useState(false);
   const [extracted, setExtracted] = useState<ExtractedAnswer[]>([]);
@@ -85,11 +90,12 @@ const StudentsAnswers: React.FC = () => {
       toast.error("Enter the student's name");
       return;
     }
-    const s: Student = { id: crypto.randomUUID(), name: newName.trim(), rollNumber: newRoll.trim() || "—" };
+    const s: Student = { id: crypto.randomUUID(), name: newName.trim(), rollNumber: newRoll.trim() || "—", email: newEmail.trim() };
     setStudents(prev => [...prev, s]);
     setSelectedStudent(s.id);
     setNewName("");
     setNewRoll("");
+    setNewEmail("");
     toast.success("Student added");
   };
 
@@ -99,6 +105,9 @@ const StudentsAnswers: React.FC = () => {
     setProcessed(false);
     setExtracted([]);
     setEvaluations({});
+    setSheetUrl(null);
+    setOcrFullText("");
+    setSaved(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -165,6 +174,8 @@ const StudentsAnswers: React.FC = () => {
       });
 
       setExtracted(rows);
+      setSheetUrl(urlData.publicUrl);
+      setOcrFullText(data.fullText || rows.map(r => `Q${r.questionNumber}: ${r.extractedText}`).join("\n\n"));
       setProcessed(true);
       toast.success("Answer sheet processed successfully.");
     } catch (err: any) {
@@ -244,6 +255,67 @@ const StudentsAnswers: React.FC = () => {
     toast.success("Teacher review saved");
   };
 
+  // Publishes the finished evaluation to the Teacher Dashboard, Results and Analytics
+  const saveToDashboard = () => {
+    if (!exam || !student) return;
+    const submissionId = crypto.randomUUID();
+    const questionEvaluations = extracted.map(row => {
+      const ev = evaluations[row.answerId];
+      const score = ev?.review?.finalMarks ?? ev?.totalScore ?? 0;
+      const q = exam.questions.find(qq => qq.id === row.questionId);
+      return {
+        questionId: row.questionId,
+        questionNumber: row.questionNumber,
+        questionText: row.questionText,
+        score: Math.round(score * 10) / 10,
+        maxMarks: row.marks,
+        percentage: row.marks ? Math.round((score / row.marks) * 100) : 0,
+        criterionScores: ev?.criterionScores ?? [],
+        misconceptions: (ev?.missingConcepts ?? []).map(c => ({
+          topic: c,
+          description: `Missing or unclear: ${c}`,
+          suggestion: `Revise ${c} in ${q?.module ?? exam.title}`,
+        })),
+        feedback: ev?.feedback ?? "Not evaluated",
+        semanticSimilarity: ev?.semanticSimilarity ?? 0,
+        detectedConcepts: ev?.detectedConcepts ?? [],
+        missingConcepts: ev?.missingConcepts ?? [],
+        extractedText: row.extractedText,
+      };
+    });
+
+    const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
+    const pct = exam.totalMarks ? Math.round((totalScore / exam.totalMarks) * 100) : 0;
+    const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
+    const strong = questionEvaluations.filter(q => q.percentage >= 75).map(q => `Strong answer in Q${q.questionNumber}`);
+    const weak = questionEvaluations.filter(q => q.percentage < 60).map(q => `Needs improvement in Q${q.questionNumber}`);
+
+    addTeacherEvaluation({
+      id: crypto.randomUUID(),
+      submissionId,
+      examId: exam.id,
+      examTitle: exam.title,
+      studentName: student.name,
+      studentEmail: student.email || `${student.rollNumber}@student.local`,
+      totalScore: Math.round(totalScore * 10) / 10,
+      totalPossible: exam.totalMarks,
+      percentage: pct,
+      grade,
+      questionEvaluations,
+      overallMisconceptions: questionEvaluations.flatMap(q => q.misconceptions),
+      performanceSummary: `${student.name} scored ${Math.round(totalScore * 10) / 10}/${exam.totalMarks} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      strengths: strong.length ? strong : ["No standout strengths detected yet"],
+      weaknesses: weak.length ? weak : ["No major weaknesses detected"],
+      evaluatedAt: new Date().toISOString(),
+      teacherReviewed: Object.values(evaluations).some(e => !!e.review),
+      answerSheetUrl: sheetUrl || undefined,
+      ocrFullText: ocrFullText || undefined,
+    } as any);
+
+    setSaved(true);
+    toast.success("Saved — visible in Dashboard, Results and Analytics");
+  };
+
   const evaluatedTotal = extracted.reduce((sum, r) => {
     const ev = evaluations[r.answerId];
     return sum + (ev?.review?.finalMarks ?? ev?.totalScore ?? 0);
@@ -265,7 +337,7 @@ const StudentsAnswers: React.FC = () => {
             <CardDescription>Add a new student or select an existing one</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_auto]">
+            <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
               <div>
                 <Label>Student name</Label>
                 <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Anita Rao" />
@@ -273,6 +345,10 @@ const StudentsAnswers: React.FC = () => {
               <div>
                 <Label>Roll number</Label>
                 <Input value={newRoll} onChange={e => setNewRoll(e.target.value)} placeholder="e.g. 1BM21CS045" />
+              </div>
+              <div>
+                <Label>Email (for student lookup)</Label>
+                <Input value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="student@school.edu" />
               </div>
               <div className="flex items-end">
                 <Button variant="outline" onClick={addStudent} className="w-full sm:w-auto">
@@ -530,6 +606,26 @@ const StudentsAnswers: React.FC = () => {
               </Card>
             );
           })}
+
+          <Card className="shadow-card">
+            <CardContent className="flex flex-wrap items-center justify-between gap-3 py-5">
+              <div>
+                <p className="font-heading text-base font-semibold text-foreground">
+                  Total: {Math.round(evaluatedTotal * 10) / 10} / {exam?.totalMarks ?? 0}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {saved ? "Saved to the dashboard." : "Evaluate the answers, then publish this result."}
+                </p>
+              </div>
+              <Button
+                onClick={saveToDashboard}
+                disabled={saved || Object.keys(evaluations).length === 0}
+                className="gradient-accent border-0 text-accent-foreground"
+              >
+                <CheckCircle className="mr-2 h-4 w-4" /> {saved ? "Saved" : "Save to Dashboard"}
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>

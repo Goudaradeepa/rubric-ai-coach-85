@@ -11,10 +11,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 const StudentDashboard: React.FC = () => {
   const { evaluations } = useEvaluation();
-  const [email, setEmail] = useState("alice@school.edu");
-  const [searchEmail, setSearchEmail] = useState("alice@school.edu");
+  const [email, setEmail] = useState("");
+  const [searchEmail, setSearchEmail] = useState("");
 
-  const studentEvals = evaluations.filter(e => e.studentEmail === searchEmail);
+  const query = searchEmail.trim().toLowerCase();
+  const studentEvals = query ? evaluations.filter(e => e.studentEmail.toLowerCase() === query) : [];
 
   const handleSearch = () => setSearchEmail(email);
 
@@ -31,7 +32,7 @@ const StudentDashboard: React.FC = () => {
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-3xl font-bold text-foreground">Student Dashboard</h1>
-        <p className="mt-1 text-muted-foreground">View your exam results and performance history</p>
+        <p className="mt-1 text-muted-foreground">Enter the email your teacher registered for you — no sign-in required</p>
       </div>
 
       {/* Email lookup */}
@@ -130,7 +131,7 @@ const StudentDashboard: React.FC = () => {
       ) : (
         <Card className="shadow-card">
           <CardContent className="flex min-h-[200px] items-center justify-center">
-            <p className="text-muted-foreground">No results found for this email. Try submitting an exam first.</p>
+            <p className="text-muted-foreground">{query ? "No results found for this email yet." : "Enter your email above to look up your results."}</p>
           </CardContent>
         </Card>
       )}
