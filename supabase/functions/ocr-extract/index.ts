@@ -17,10 +17,15 @@ serve(async (req) => {
 
     const fileResp = await fetch(fileUrl);
     if (!fileResp.ok) throw new Error(`Failed to fetch file: ${fileResp.status}`);
-    const fileBytes = await fileResp.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(fileBytes)));
+    const bytes = new Uint8Array(await fileResp.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    const base64 = btoa(binary);
 
     const detectedMime = mimeType || "image/png";
+    const isPdf = detectedMime.includes("pdf");
 
     const systemPrompt = `You are an expert OCR system that extracts handwritten and printed text from scanned exam answer sheets. 
 You must:
@@ -42,10 +47,9 @@ Separate the text by question number. Use the extract_answers tool to return str
         role: "user",
         content: [
           { type: "text", text: userPrompt },
-          {
-            type: "image_url",
-            image_url: { url: `data:${detectedMime};base64,${base64}` },
-          },
+          isPdf
+            ? { type: "file", file: { filename: "answer-sheet.pdf", file_data: `data:${detectedMime};base64,${base64}` } }
+            : { type: "image_url", image_url: { url: `data:${detectedMime};base64,${base64}` } },
         ],
       },
     ];
