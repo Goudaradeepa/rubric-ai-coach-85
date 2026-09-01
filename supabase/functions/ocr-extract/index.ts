@@ -47,10 +47,9 @@ Separate the text by question number. Use the extract_answers tool to return str
         role: "user",
         content: [
           { type: "text", text: userPrompt },
-          {
-            type: "image_url",
-            image_url: { url: `data:${detectedMime};base64,${base64}` },
-          },
+          isPdf
+            ? { type: "file", file: { filename: "answer-sheet.pdf", file_data: `data:${detectedMime};base64,${base64}` } }
+            : { type: "image_url", image_url: { url: `data:${detectedMime};base64,${base64}` } },
         ],
       },
     ];
