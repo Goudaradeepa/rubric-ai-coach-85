@@ -17,10 +17,15 @@ serve(async (req) => {
 
     const fileResp = await fetch(fileUrl);
     if (!fileResp.ok) throw new Error(`Failed to fetch file: ${fileResp.status}`);
-    const fileBytes = await fileResp.arrayBuffer();
-    const base64 = btoa(String.fromCharCode(...new Uint8Array(fileBytes)));
+    const bytes = new Uint8Array(await fileResp.arrayBuffer());
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 8192) {
+      binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+    }
+    const base64 = btoa(binary);
 
     const detectedMime = mimeType || "image/png";
+    const isPdf = detectedMime.includes("pdf");
 
     const systemPrompt = `You are an expert OCR system that extracts handwritten and printed text from scanned exam answer sheets. 
 You must:
