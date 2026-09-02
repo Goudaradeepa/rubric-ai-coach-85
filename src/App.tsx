@@ -4,8 +4,11 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { EvaluationProvider } from "@/context/EvaluationContext";
+import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/AppLayout";
 import TeacherDashboard from "@/pages/TeacherDashboard";
+import TeacherAuth from "@/pages/TeacherAuth";
 import StudentSubmission from "@/pages/StudentSubmission";
 import StudentDashboard from "@/pages/StudentDashboard";
 import EvaluationResults from "@/pages/EvaluationResults";
@@ -19,30 +22,35 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+const teacher = (el: React.ReactNode) => <ProtectedRoute>{el}</ProtectedRoute>;
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
-      <EvaluationProvider>
-        <BrowserRouter>
-          <AppLayout>
-            <Routes>
-              <Route path="/" element={<TeacherDashboard />} />
-              <Route path="/teacher-evaluate" element={<TeacherUploadEvaluation />} />
-              <Route path="/bulk-evaluate" element={<TeacherBulkEvaluation />} />
-              <Route path="/question-paper" element={<QuestionPaperProcessing />} />
-              <Route path="/review" element={<ReviewQueue />} />
-              <Route path="/students-answers" element={<StudentsAnswers />} />
-              <Route path="/submit" element={<StudentSubmission />} />
-              <Route path="/student" element={<StudentDashboard />} />
-              <Route path="/results" element={<EvaluationResults />} />
-              <Route path="/analytics" element={<PerformanceAnalytics />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </AppLayout>
-        </BrowserRouter>
-      </EvaluationProvider>
+      <AuthProvider>
+        <EvaluationProvider>
+          <BrowserRouter>
+            <AppLayout>
+              <Routes>
+                <Route path="/auth" element={<TeacherAuth />} />
+                <Route path="/" element={teacher(<TeacherDashboard />)} />
+                <Route path="/teacher-evaluate" element={teacher(<TeacherUploadEvaluation />)} />
+                <Route path="/bulk-evaluate" element={teacher(<TeacherBulkEvaluation />)} />
+                <Route path="/question-paper" element={teacher(<QuestionPaperProcessing />)} />
+                <Route path="/review" element={teacher(<ReviewQueue />)} />
+                <Route path="/students-answers" element={teacher(<StudentsAnswers />)} />
+                <Route path="/results" element={teacher(<EvaluationResults />)} />
+                <Route path="/analytics" element={teacher(<PerformanceAnalytics />)} />
+                <Route path="/submit" element={<StudentSubmission />} />
+                <Route path="/student" element={<StudentDashboard />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </AppLayout>
+          </BrowserRouter>
+        </EvaluationProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );
