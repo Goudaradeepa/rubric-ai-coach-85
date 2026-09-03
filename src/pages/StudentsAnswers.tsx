@@ -35,6 +35,28 @@ interface ExtractedAnswer {
   ocrConfidence: number;
 }
 
+// "1" + "a)" -> "1a"; used to align OCR answers with paper questions
+function questionKey(num: number | string, sub?: string): string {
+  const n = String(num).replace(/[^0-9]/g, "");
+  const s = (sub || "").toLowerCase().replace(/[^a-z]/g, "");
+  return `${n}${s}`;
+}
+
+// OCR may return 1, "1a", "Q1(b)" or 1.2 — normalize all forms to "1a"/"1b"
+function normalizeOcrKey(a: any): string {
+  const raw = a?.questionLabel ?? a?.questionNumber;
+  if (raw === undefined || raw === null) return "";
+  const str = String(raw).toLowerCase();
+  const letterMatch = str.match(/(\d+)\s*[().\-]?\s*([a-z])/);
+  if (letterMatch) return `${letterMatch[1]}${letterMatch[2]}`;
+  const decimal = str.match(/^(\d+)\.(\d+)$/);
+  if (decimal) return `${decimal[1]}${String.fromCharCode(96 + Number(decimal[2]))}`;
+  const digits = str.replace(/[^0-9]/g, "");
+  return digits;
+}
+
+
+
 interface CriterionScore {
   criterionId: string;
   criterionName: string;
