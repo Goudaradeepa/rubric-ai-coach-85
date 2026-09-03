@@ -45,6 +45,17 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 </Link>
               );
             })}
+            {user ? (
+              <Button variant="ghost" size="sm" onClick={signOut} className="ml-2 text-primary-foreground/80 hover:bg-sidebar-accent/50 hover:text-primary-foreground">
+                <LogOut className="h-4 w-4 md:mr-2" />
+                <span className="hidden md:inline">Sign out</span>
+              </Button>
+            ) : (
+              <Link to="/auth" className="ml-2 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-primary-foreground/70 hover:bg-sidebar-accent/50 hover:text-primary-foreground">
+                <LogIn className="h-4 w-4" />
+                <span className="hidden md:inline">Teacher Login</span>
+              </Link>
+            )}
           </nav>
         </div>
       </header>
