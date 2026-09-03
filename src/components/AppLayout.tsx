@@ -1,6 +1,8 @@
 import React from "react";
 import { Link, useLocation } from "react-router-dom";
-import { BookOpen, GraduationCap, BarChart3, ClipboardCheck, User, Users, ScrollText } from "lucide-react";
+import { BookOpen, GraduationCap, BarChart3, ClipboardCheck, User, Users, ScrollText, LogOut, LogIn } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
+import { Button } from "@/components/ui/button";
 
 const navItems = [
   { path: "/", label: "Dashboard", icon: BookOpen },
@@ -13,6 +15,7 @@ const navItems = [
 
 const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
+  const { user, signOut } = useAuth();
 
   return (
     <div className="min-h-screen bg-background">
