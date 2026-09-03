@@ -20,7 +20,7 @@ interface EvaluationContextType {
   getStudentEvaluations: (email: string) => ExamEvaluation[];
 }
 
-const STORAGE_PREFIX = "evalai:";
+const STORAGE_PREFIX = "evalai:v2:";
 
 function load<T>(key: string, fallback: T): T {
   try {
