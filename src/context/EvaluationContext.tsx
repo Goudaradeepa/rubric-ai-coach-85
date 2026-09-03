@@ -21,9 +21,36 @@ interface EvaluationContextType {
 }
 
 const STORAGE_PREFIX = "evalai:v2:";
+const LEGACY_PREFIX = "evalai:";
+const DEMO_TITLES = ["biology mid-term", "physics final exam"];
+
+/** One-time migration from the old cache: keep real data, drop the removed demo exams. */
+function migrateLegacy() {
+  try {
+    if (localStorage.getItem(STORAGE_PREFIX + "migrated")) return;
+    const read = (k: string) => {
+      const raw = localStorage.getItem(LEGACY_PREFIX + k);
+      return raw ? JSON.parse(raw) : null;
+    };
+    const exams = (read("exams") as any[]) || [];
+    const keptExams = exams.filter(e => !DEMO_TITLES.includes(String(e?.title || "").toLowerCase()));
+    const keptIds = new Set(keptExams.map(e => e.id));
+    const filterByExam = (k: string) =>
+      (((read(k) as any[]) || []).filter(r => keptIds.has(r?.examId)));
+
+    localStorage.setItem(STORAGE_PREFIX + "exams", JSON.stringify(keptExams));
+    localStorage.setItem(STORAGE_PREFIX + "submissions", JSON.stringify(filterByExam("submissions")));
+    localStorage.setItem(STORAGE_PREFIX + "evaluations", JSON.stringify(filterByExam("evaluations")));
+    localStorage.setItem(STORAGE_PREFIX + "reviewQueue", JSON.stringify(read("reviewQueue") || []));
+    localStorage.setItem(STORAGE_PREFIX + "migrated", "1");
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 function load<T>(key: string, fallback: T): T {
   try {
+    migrateLegacy();
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
