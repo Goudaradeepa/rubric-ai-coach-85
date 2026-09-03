@@ -35,6 +35,28 @@ interface ExtractedAnswer {
   ocrConfidence: number;
 }
 
+// "1" + "a)" -> "1a"; used to align OCR answers with paper questions
+function questionKey(num: number | string, sub?: string): string {
+  const n = String(num).replace(/[^0-9]/g, "");
+  const s = (sub || "").toLowerCase().replace(/[^a-z]/g, "");
+  return `${n}${s}`;
+}
+
+// OCR may return 1, "1a", "Q1(b)" or 1.2 — normalize all forms to "1a"/"1b"
+function normalizeOcrKey(a: any): string {
+  const raw = a?.questionLabel ?? a?.questionNumber;
+  if (raw === undefined || raw === null) return "";
+  const str = String(raw).toLowerCase();
+  const letterMatch = str.match(/(\d+)\s*[().\-]?\s*([a-z])/);
+  if (letterMatch) return `${letterMatch[1]}${letterMatch[2]}`;
+  const decimal = str.match(/^(\d+)\.(\d+)$/);
+  if (decimal) return `${decimal[1]}${String.fromCharCode(96 + Number(decimal[2]))}`;
+  const digits = str.replace(/[^0-9]/g, "");
+  return digits;
+}
+
+
+
 interface CriterionScore {
   criterionId: string;
   criterionName: string;
@@ -147,6 +169,8 @@ const StudentsAnswers: React.FC = () => {
 
       const { data: urlData } = supabase.storage.from("answer-sheets").getPublicUrl(up.path);
 
+      const expectedLabels = exam.questions.map(q => questionKey(q.questionNumber, (q as any).subQuestion));
+
       const { data, error } = await supabase.functions.invoke("ocr-extract", {
         body: {
           student_id: student.id,
@@ -154,22 +178,32 @@ const StudentsAnswers: React.FC = () => {
           fileUrl: urlData.publicUrl,
           mimeType: file.type,
           questionCount: exam.questions.length,
+          expectedLabels,
         },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      const rows: ExtractedAnswer[] = exam.questions.map(q => {
-        const match = data.answers?.find((a: any) => a.questionNumber === q.questionNumber);
+      const ocrAnswers: any[] = Array.isArray(data.answers) ? data.answers : [];
+      const used = new Set<number>();
+
+      const rows: ExtractedAnswer[] = exam.questions.map((q, idx) => {
+        const key = questionKey(q.questionNumber, (q as any).subQuestion);
+        let matchIdx = ocrAnswers.findIndex((a, i) => !used.has(i) && normalizeOcrKey(a) === key);
+        if (matchIdx === -1 && ocrAnswers.length === exam.questions.length) matchIdx = used.has(idx) ? -1 : idx;
+        if (matchIdx >= 0) used.add(matchIdx);
+        const match = matchIdx >= 0 ? ocrAnswers[matchIdx] : undefined;
+        const text = (match?.extractedText || "").trim();
+        const isEmpty = !text || /^\(no answer/i.test(text);
         return {
           answerId: crypto.randomUUID(),
           questionId: q.id,
           questionNumber: q.questionNumber,
           questionText: q.questionText,
           marks: q.marks,
-          extractedText: match?.extractedText || "",
-          ocrStatus: match?.extractedText ? "done" : "empty",
-          ocrConfidence: match?.confidence ?? 0,
+          extractedText: isEmpty ? "" : text,
+          ocrStatus: isEmpty ? "empty" : "done",
+          ocrConfidence: isEmpty ? 0 : match?.confidence ?? 0,
         };
       });
 

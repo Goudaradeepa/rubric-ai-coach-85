@@ -12,7 +12,7 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const { fileUrl, mimeType, questionCount } = await req.json();
+    const { fileUrl, mimeType, questionCount, expectedLabels } = await req.json();
     if (!fileUrl) throw new Error("fileUrl is required");
 
     const fileResp = await fetch(fileUrl);
@@ -34,12 +34,18 @@ You must:
 3. Identify and separate answers by question number (Q1, Q2, Q3, etc.)
 4. If question numbers aren't clearly visible, detect answer boundaries based on spacing/formatting
 5. Preserve the student's original text as accurately as possible
-6. Handle both handwritten and typed text`;
+6. Handle both handwritten and typed text
+7. Transcribe mathematical formulas, equations, chemical formulas and code exactly as written (use plain text / LaTeX-like notation)
+8. For diagrams, flowcharts or figures, insert a short bracketed description, e.g. [Diagram: labelled cell structure with nucleus and membrane]
+9. Never invent content. If a question is genuinely unanswered, return an empty extractedText for it`;
 
     const userPrompt = `Extract all text from this scanned answer sheet. ${questionCount ? `The exam has ${questionCount} questions.` : "Detect how many questions there are."}
 
 Also detect the student's name, roll number/ID, and any exam information visible on the sheet.
-Separate the text by question number. Use the extract_answers tool to return structured results.`;
+Separate the text by question number. Use the extract_answers tool to return structured results.
+${Array.isArray(expectedLabels) && expectedLabels.length
+  ? `The question paper has these question labels in order: ${expectedLabels.join(", ")}. Return one entry per label using EXACTLY these labels in the questionLabel field (e.g. "1a", "1b", "2a"). Leave extractedText empty for labels the student did not answer.`
+  : ""}`;
 
     const messages: any[] = [
       { role: "system", content: systemPrompt },
@@ -94,13 +100,17 @@ Separate the text by question number. Use the extract_answers tool to return str
                       type: "object",
                       properties: {
                         questionNumber: { type: "number" },
+                        questionLabel: {
+                          type: "string",
+                          description: "Question label such as 1a, 1b, 2a. Use the expected labels when provided.",
+                        },
                         extractedText: { type: "string" },
                         confidence: {
                           type: "number",
                           description: "OCR confidence 0.0-1.0",
                         },
                       },
-                      required: ["questionNumber", "extractedText", "confidence"],
+                      required: ["questionNumber", "questionLabel", "extractedText", "confidence"],
                       additionalProperties: false,
                     },
                   },
