@@ -24,86 +24,127 @@ Use this default marking pattern, scaled to the question marks and its Bloom's L
 Each criterion needs a name, a short description of what earns the marks, the expected concept keywords, and maxScore.
 Round criterion marks to whole or half marks and make the sum exact.`;
 
-    const list = questions.map((q: any) => `
+    const describe = (q: any) => `
 [qid:${q.id}] ${q.module ? q.module + " | " : ""}Q${q.questionNumber}${q.subQuestion ? "(" + q.subQuestion + ")" : ""} — ${q.marks} marks${q.bloomLevel ? " | BL: " + q.bloomLevel : ""}${q.courseOutcome ? " | CO: " + q.courseOutcome : ""}
-${q.questionText}`).join("\n");
+${q.questionText}`;
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Subject: ${subject || "General"}\n\nGenerate rubrics for these questions using the generate_rubrics tool:\n${list}` },
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "generate_rubrics",
-              description: "Return question-wise model answers and rubric criteria",
-              parameters: {
-                type: "object",
-                properties: {
-                  rubrics: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        questionId: { type: "string" },
-                        modelAnswer: { type: "string" },
-                        criteria: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              name: { type: "string" },
-                              description: { type: "string" },
-                              expectedConcept: { type: "string" },
-                              maxScore: { type: "number" },
-                            },
-                            required: ["name", "description", "expectedConcept", "maxScore"],
-                            additionalProperties: false,
-                          },
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "generate_rubrics",
+          description: "Return question-wise model answers and rubric criteria",
+          parameters: {
+            type: "object",
+            properties: {
+              rubrics: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    questionId: { type: "string" },
+                    modelAnswer: { type: "string" },
+                    criteria: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          name: { type: "string" },
+                          description: { type: "string" },
+                          expectedConcept: { type: "string" },
+                          maxScore: { type: "number" },
                         },
+                        required: ["name", "description", "expectedConcept", "maxScore"],
+                        additionalProperties: false,
                       },
-                      required: ["questionId", "modelAnswer", "criteria"],
-                      additionalProperties: false,
                     },
                   },
+                  required: ["questionId", "modelAnswer", "criteria"],
+                  additionalProperties: false,
                 },
-                required: ["rubrics"],
-                additionalProperties: false,
               },
             },
+            required: ["rubrics"],
+            additionalProperties: false,
           },
-        ],
-        tool_choice: { type: "function", function: { name: "generate_rubrics" } },
-      }),
-    });
+        },
+      },
+    ];
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
-          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    // Batch the questions: one big call gets truncated by the model's output limit,
+    // which used to drop the last question(s) (e.g. Q5) from the response.
+    const BATCH_SIZE = 3;
+    const batches: any[][] = [];
+    for (let i = 0; i < questions.length; i += BATCH_SIZE) {
+      batches.push(questions.slice(i, i + BATCH_SIZE));
+    }
+
+    let rateLimited = false;
+    let creditsExhausted = false;
+
+    const runBatch = async (batch: any[]) => {
+      const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "google/gemini-3-flash-preview",
+          messages: [
+            { role: "system", content: systemPrompt },
+            {
+              role: "user",
+              content: `Subject: ${subject || "General"}\n\nGenerate rubrics for ALL ${batch.length} question(s) below using the generate_rubrics tool. Return one entry per [qid:...]. Keep model answers concise (max ~120 words or a compact code snippet).\n${batch.map(describe).join("\n")}`,
+            },
+          ],
+          tools,
+          tool_choice: { type: "function", function: { name: "generate_rubrics" } },
+        }),
+      });
+
+      if (!response.ok) {
+        if (response.status === 429) rateLimited = true;
+        if (response.status === 402) creditsExhausted = true;
+        console.error("AI gateway error:", response.status, await response.text());
+        return [] as any[];
       }
-      if (response.status === 402) {
+
+      const data = await response.json();
+      const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
+      if (!toolCall) {
+        console.error("No tool call in AI response for batch");
+        return [] as any[];
+      }
+      try {
+        const parsed = JSON.parse(toolCall.function.arguments);
+        return Array.isArray(parsed?.rubrics) ? parsed.rubrics : [];
+      } catch (err) {
+        console.error("Failed to parse rubric batch:", err);
+        return [] as any[];
+      }
+    };
+
+    const results = await Promise.all(batches.map(runBatch));
+    const rubrics = results.flat();
+
+    if (rubrics.length === 0) {
+      if (creditsExhausted) {
         return new Response(JSON.stringify({ error: "AI credits exhausted. Please add credits in Settings → Workspace → Usage." }), {
           status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const text = await response.text();
-      console.error("AI gateway error:", response.status, text);
-      throw new Error(`AI gateway error: ${response.status}`);
+      if (rateLimited) {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again in a moment." }), {
+          status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw new Error("AI did not return any rubrics");
     }
 
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("No tool call in AI response");
+    const missing = questions
+      .filter((q: any) => !rubrics.some((r: any) => r.questionId === q.id))
+      .map((q: any) => `Q${q.questionNumber}${q.subQuestion || ""}`);
+    if (missing.length) console.error("Rubrics missing for:", missing.join(", "));
 
-    return new Response(toolCall.function.arguments, {
+    return new Response(JSON.stringify({ rubrics, missing }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
