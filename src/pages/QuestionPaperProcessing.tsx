@@ -26,7 +26,21 @@ const QuestionPaperProcessing: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
 
-  const totalMarks = questions.reduce((s, q) => s + (Number(q.marks) || 0), 0);
+  // OR alternatives (same orGroup) count once toward the total — students answer only one of them
+  const totalMarks = (() => {
+    const seen = new Map<string, number>();
+    let total = 0;
+    for (const q of questions) {
+      const marks = Number(q.marks) || 0;
+      if (q.orGroup) {
+        const prev = seen.get(q.orGroup) ?? 0;
+        if (marks > prev) { total += marks - prev; seen.set(q.orGroup, marks); }
+      } else {
+        total += marks;
+      }
+    }
+    return total;
+  })();
   const rubricsReady = questions.length > 0 && questions.every(q => q.rubricCriteria.length > 0);
 
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
