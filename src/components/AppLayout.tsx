@@ -25,7 +25,7 @@ const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent">
               <GraduationCap className="h-5 w-5 text-accent-foreground" />
             </div>
-            <span className="font-heading text-xl font-bold text-primary-foreground">EvalAI</span>
+            <span className="font-heading text-xl font-bold text-primary-foreground">FairMark</span>
           </Link>
           <nav className="flex items-center gap-1">
             {navItems.map(item => {
