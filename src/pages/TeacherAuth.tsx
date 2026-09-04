@@ -36,7 +36,7 @@ const TeacherAuth: React.FC = () => {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setBusy(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -46,7 +46,15 @@ const TeacherAuth: React.FC = () => {
     });
     setBusy(false);
     if (error) return toast.error(error.message);
-    toast.success("Account created. Check your email to confirm, then sign in.");
+    if (data.session) {
+      toast.success("Account created. Welcome!");
+      navigate("/", { replace: true });
+      return;
+    }
+    const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+    if (signInError) return toast.error(signInError.message);
+    toast.success("Account created. Welcome!");
+    navigate("/", { replace: true });
   };
 
   return (
