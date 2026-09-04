@@ -97,7 +97,17 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const addExam = useCallback((exam: Omit<Exam, "id" | "createdAt" | "totalMarks">) => {
-    const totalMarks = exam.questions.reduce((s, q) => s + q.marks, 0);
+    // OR alternatives (same orGroup) count once — students answer only one of them
+    const seen = new Map<string, number>();
+    const totalMarks = exam.questions.reduce((s, q) => {
+      const marks = Number(q.marks) || 0;
+      if (q.orGroup) {
+        const prev = seen.get(q.orGroup) ?? 0;
+        if (marks > prev) { seen.set(q.orGroup, marks); return s + marks - prev; }
+        return s;
+      }
+      return s + marks;
+    }, 0);
     setExams(prev => [...prev, { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks }]);
   }, []);
 
