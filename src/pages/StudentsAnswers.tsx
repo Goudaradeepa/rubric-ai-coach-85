@@ -411,7 +411,10 @@ const StudentsAnswers: React.FC = () => {
       grade,
       questionEvaluations,
       overallMisconceptions: questionEvaluations.flatMap(q => q.misconceptions),
-      performanceSummary: `${student.name} scored ${totalScore}/${totalPossible} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      performanceSummary: isBlankSheet
+        ? `${student.name} uploaded a blank or unreadable answer sheet for ${exam.title}. No answers could be extracted, so the submission is scored 0/${totalPossible} and flagged for the teacher.`
+        : `${student.name} scored ${totalScore}/${totalPossible} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      isBlankSheet,
       strengths: strong.length ? strong : ["No standout strengths detected yet"],
       weaknesses: weak.length ? weak : ["No major weaknesses detected"],
       evaluatedAt: new Date().toISOString(),
