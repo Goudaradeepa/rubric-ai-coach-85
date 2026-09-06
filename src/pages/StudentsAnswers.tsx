@@ -395,10 +395,13 @@ const StudentsAnswers: React.FC = () => {
     toast.success("Saved — visible in Dashboard, Results and Analytics");
   };
 
-  const evaluatedTotal = extracted.reduce((sum, r) => {
-    const ev = evaluations[r.answerId];
-    return sum + (ev?.review?.finalMarks ?? ev?.totalScore ?? 0);
-  }, 0);
+  const evaluatedTotals = exam
+    ? effectiveTotals(exam.questions, qid => {
+        const row = extracted.find(r => r.questionId === qid);
+        const ev = row ? evaluations[row.answerId] : undefined;
+        return ev?.review?.finalMarks ?? ev?.totalScore ?? 0;
+      })
+    : { score: 0, max: 0 };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
