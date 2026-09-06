@@ -24,6 +24,8 @@ const STORAGE_PREFIX = "evalai:v2:";
 const LEGACY_PREFIX = "evalai:";
 const DEMO_TITLES = ["biology mid-term", "physics final exam"];
 
+const examKey = (e: any) => `${String(e?.title || "").trim().toLowerCase()}|${String(e?.subject || "").trim().toLowerCase()}`;
+
 /** One-time migration from the old cache: keep real data, drop the removed demo exams. */
 function migrateLegacy() {
   try {
@@ -43,6 +45,38 @@ function migrateLegacy() {
     localStorage.setItem(STORAGE_PREFIX + "evaluations", JSON.stringify(filterByExam("evaluations")));
     localStorage.setItem(STORAGE_PREFIX + "reviewQueue", JSON.stringify(read("reviewQueue") || []));
     localStorage.setItem(STORAGE_PREFIX + "migrated", "1");
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+/** One-time cleanup: collapse duplicate exam papers (same title+subject), keeping the newest. */
+function dedupeExams() {
+  try {
+    if (localStorage.getItem(STORAGE_PREFIX + "deduped")) return;
+    const read = (k: string) => {
+      const raw = localStorage.getItem(STORAGE_PREFIX + k);
+      return raw ? JSON.parse(raw) : null;
+    };
+    const exams = (read("exams") as any[]) || [];
+    const byKey = new Map<string, any>();
+    const dupIds = new Set<string>();
+    for (const e of exams) {
+      const prev = byKey.get(examKey(e));
+      if (!prev) { byKey.set(examKey(e), e); continue; }
+      // Keep the newer copy (re-processed paper), drop the older
+      const keepNew = String(e.createdAt || "") >= String(prev.createdAt || "");
+      byKey.set(examKey(e), keepNew ? e : prev);
+      dupIds.add((keepNew ? prev : e).id);
+    }
+    if (dupIds.size === 0) { localStorage.setItem(STORAGE_PREFIX + "deduped", "1"); return; }
+    const keptExams = [...byKey.values()];
+    const filterByExam = (k: string) =>
+      (((read(k) as any[]) || []).filter(r => !dupIds.has(r?.examId)));
+    localStorage.setItem(STORAGE_PREFIX + "exams", JSON.stringify(keptExams));
+    localStorage.setItem(STORAGE_PREFIX + "submissions", JSON.stringify(filterByExam("submissions")));
+    localStorage.setItem(STORAGE_PREFIX + "evaluations", JSON.stringify(filterByExam("evaluations")));
+    localStorage.setItem(STORAGE_PREFIX + "deduped", "1");
   } catch {
     /* storage unavailable */
   }
