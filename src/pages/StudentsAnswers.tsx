@@ -570,7 +570,7 @@ const StudentsAnswers: React.FC = () => {
               </p>
             </div>
             <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
-              Total: {evaluatedTotal} / {exam.totalMarks}
+              Total: {evaluatedTotals.score} / {evaluatedTotals.max}
             </span>
           </div>
 
@@ -693,7 +693,7 @@ const StudentsAnswers: React.FC = () => {
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-5">
               <div>
                 <p className="font-heading text-base font-semibold text-foreground">
-                  Total: {Math.round(evaluatedTotal * 10) / 10} / {exam?.totalMarks ?? 0}
+                  Total: {evaluatedTotals.score} / {evaluatedTotals.max}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {saved ? "Saved to the dashboard." : "Evaluate the answers, then publish this result."}
