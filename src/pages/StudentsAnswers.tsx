@@ -379,7 +379,7 @@ const StudentsAnswers: React.FC = () => {
           description: `Missing or unclear: ${c}`,
           suggestion: `Revise ${c} in ${q?.module ?? exam.title}`,
         })),
-        feedback: ev?.feedback ?? "Not evaluated",
+        feedback: ev?.feedback ?? (isBlankSheet ? "Blank answer sheet — no readable answer detected." : "Not evaluated"),
         semanticSimilarity: ev?.semanticSimilarity ?? 0,
         detectedConcepts: ev?.detectedConcepts ?? [],
         missingConcepts: ev?.missingConcepts ?? [],
