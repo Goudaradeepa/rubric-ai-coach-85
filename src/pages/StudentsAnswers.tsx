@@ -358,6 +358,9 @@ const StudentsAnswers: React.FC = () => {
   // Publishes the finished evaluation to the Teacher Dashboard, Results and Analytics
   const saveToDashboard = () => {
     if (!exam || !student) return;
+    // A sheet where OCR found no readable answer for any question is blank —
+    // publish it as a flagged zero-mark result instead of a broken row.
+    const isBlankSheet = extracted.length > 0 && extracted.every(r => !r.extractedText.trim());
     const submissionId = crypto.randomUUID();
     const questionEvaluations = extracted.map(row => {
       const ev = evaluations[row.answerId];
