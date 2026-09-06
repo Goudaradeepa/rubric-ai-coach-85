@@ -28,6 +28,7 @@ interface ExtractedAnswer {
   answerId: string;
   questionId: string;
   questionNumber: number;
+  subQuestion?: string;
   questionText: string;
   marks: number;
   extractedText: string;
@@ -54,6 +55,44 @@ function normalizeOcrKey(a: any): string {
   const digits = str.replace(/[^0-9]/g, "");
   return digits;
 }
+
+// Display label: (1, "a)") -> "Q1a"; (2, undefined) -> "Q2"
+function questionLabel(num: number, sub?: string): string {
+  const s = (sub || "").toLowerCase().replace(/[^a-z]/g, "");
+  return `Q${num}${s}`;
+}
+
+// OR alternatives count once — the student answers only one, so the best-scoring
+// alternative in each orGroup wins; its max marks define the paper total.
+function effectiveTotals(
+  questions: { id: string; marks: number; orGroup?: string }[],
+  scoreFor: (questionId: string) => number
+) {
+  const groups = new Map<string, { score: number; max: number }>();
+  let score = 0;
+  let max = 0;
+  for (const q of questions) {
+    const s = scoreFor(q.id);
+    const m = Number(q.marks) || 0;
+    if (q.orGroup) {
+      const g = groups.get(q.orGroup) ?? { score: 0, max: 0 };
+      g.score = Math.max(g.score, s);
+      g.max = Math.max(g.max, m);
+      groups.set(q.orGroup, g);
+    } else {
+      score += s;
+      max += m;
+    }
+  }
+  for (const g of groups.values()) {
+    score += g.score;
+    max += g.max;
+  }
+  return { score: Math.round(score * 10) / 10, max };
+}
+
+
+
 
 
 
@@ -199,6 +238,7 @@ const StudentsAnswers: React.FC = () => {
           answerId: crypto.randomUUID(),
           questionId: q.id,
           questionNumber: q.questionNumber,
+          subQuestion: (q as any).subQuestion,
           questionText: q.questionText,
           marks: q.marks,
           extractedText: isEmpty ? "" : text,
@@ -318,8 +358,13 @@ const StudentsAnswers: React.FC = () => {
       };
     });
 
-    const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
-    const pct = exam.totalMarks ? Math.round((totalScore / exam.totalMarks) * 100) : 0;
+    // OR alternatives count once — best-scoring alternative wins; recompute the
+    // paper max from its questions so stale saved totals can't inflate the result.
+    const scoreById = new Map(questionEvaluations.map(qe => [qe.questionId, qe.score]));
+    const totals = effectiveTotals(exam.questions, qid => scoreById.get(qid) ?? 0);
+    const totalScore = totals.score;
+    const totalPossible = totals.max;
+    const pct = totalPossible ? Math.round((totalScore / totalPossible) * 100) : 0;
     const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
     const strong = questionEvaluations.filter(q => q.percentage >= 75).map(q => `Strong answer in Q${q.questionNumber}`);
     const weak = questionEvaluations.filter(q => q.percentage < 60).map(q => `Needs improvement in Q${q.questionNumber}`);
@@ -331,13 +376,13 @@ const StudentsAnswers: React.FC = () => {
       examTitle: exam.title,
       studentName: student.name,
       studentEmail: student.email || `${student.rollNumber}@student.local`,
-      totalScore: Math.round(totalScore * 10) / 10,
-      totalPossible: exam.totalMarks,
+      totalScore,
+      totalPossible,
       percentage: pct,
       grade,
       questionEvaluations,
       overallMisconceptions: questionEvaluations.flatMap(q => q.misconceptions),
-      performanceSummary: `${student.name} scored ${Math.round(totalScore * 10) / 10}/${exam.totalMarks} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      performanceSummary: `${student.name} scored ${totalScore}/${totalPossible} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
       strengths: strong.length ? strong : ["No standout strengths detected yet"],
       weaknesses: weak.length ? weak : ["No major weaknesses detected"],
       evaluatedAt: new Date().toISOString(),
@@ -350,10 +395,13 @@ const StudentsAnswers: React.FC = () => {
     toast.success("Saved — visible in Dashboard, Results and Analytics");
   };
 
-  const evaluatedTotal = extracted.reduce((sum, r) => {
-    const ev = evaluations[r.answerId];
-    return sum + (ev?.review?.finalMarks ?? ev?.totalScore ?? 0);
-  }, 0);
+  const evaluatedTotals = exam
+    ? effectiveTotals(exam.questions, qid => {
+        const row = extracted.find(r => r.questionId === qid);
+        const ev = row ? evaluations[row.answerId] : undefined;
+        return ev?.review?.finalMarks ?? ev?.totalScore ?? 0;
+      })
+    : { score: 0, max: 0 };
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -522,7 +570,7 @@ const StudentsAnswers: React.FC = () => {
               </p>
             </div>
             <span className="rounded-full bg-accent/10 px-3 py-1 text-sm font-medium text-accent">
-              Total: {evaluatedTotal} / {exam.totalMarks}
+              Total: {evaluatedTotals.score} / {evaluatedTotals.max}
             </span>
           </div>
 
@@ -534,7 +582,7 @@ const StudentsAnswers: React.FC = () => {
               <Card key={row.answerId} className="shadow-card">
                 <CardHeader className="pb-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="font-heading text-base">Q{row.questionNumber} — {row.marks} marks</CardTitle>
+                    <CardTitle className="font-heading text-base">{questionLabel(row.questionNumber, row.subQuestion)} — {row.marks} marks</CardTitle>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">
                         OCR Status: {row.ocrStatus === "done" ? "Done" : "No text found"}
@@ -645,7 +693,7 @@ const StudentsAnswers: React.FC = () => {
             <CardContent className="flex flex-wrap items-center justify-between gap-3 py-5">
               <div>
                 <p className="font-heading text-base font-semibold text-foreground">
-                  Total: {Math.round(evaluatedTotal * 10) / 10} / {exam?.totalMarks ?? 0}
+                  Total: {evaluatedTotals.score} / {evaluatedTotals.max}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {saved ? "Saved to the dashboard." : "Evaluate the answers, then publish this result."}
