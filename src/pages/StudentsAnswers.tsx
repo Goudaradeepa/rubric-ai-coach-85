@@ -269,6 +269,7 @@ const StudentsAnswers: React.FC = () => {
       const evaluation: AnswerEvaluation = {
         evaluationId: crypto.randomUUID(),
         totalScore: 0,
+        maxMarks: row.marks,
         criterionScores: (question.rubricCriteria ?? []).map(c => ({
           criterionId: c.id,
           criterionName: c.name,
