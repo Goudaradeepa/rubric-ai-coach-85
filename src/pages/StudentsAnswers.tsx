@@ -55,6 +55,44 @@ function normalizeOcrKey(a: any): string {
   return digits;
 }
 
+// Display label: (1, "a)") -> "Q1a"; (2, undefined) -> "Q2"
+function questionLabel(num: number, sub?: string): string {
+  const s = (sub || "").toLowerCase().replace(/[^a-z]/g, "");
+  return `Q${num}${s}`;
+}
+
+// OR alternatives count once — the student answers only one, so the best-scoring
+// alternative in each orGroup wins; its max marks define the paper total.
+function effectiveTotals(
+  questions: { id: string; marks: number; orGroup?: string }[],
+  scoreFor: (questionId: string) => number
+) {
+  const groups = new Map<string, { score: number; max: number }>();
+  let score = 0;
+  let max = 0;
+  for (const q of questions) {
+    const s = scoreFor(q.id);
+    const m = Number(q.marks) || 0;
+    if (q.orGroup) {
+      const g = groups.get(q.orGroup) ?? { score: 0, max: 0 };
+      g.score = Math.max(g.score, s);
+      g.max = Math.max(g.max, m);
+      groups.set(q.orGroup, g);
+    } else {
+      score += s;
+      max += m;
+    }
+  }
+  for (const g of groups.values()) {
+    score += g.score;
+    max += g.max;
+  }
+  return { score: Math.round(score * 10) / 10, max };
+}
+
+
+
+
 
 
 interface CriterionScore {
