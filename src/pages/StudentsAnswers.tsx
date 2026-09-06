@@ -358,8 +358,13 @@ const StudentsAnswers: React.FC = () => {
       };
     });
 
-    const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
-    const pct = exam.totalMarks ? Math.round((totalScore / exam.totalMarks) * 100) : 0;
+    // OR alternatives count once — best-scoring alternative wins; recompute the
+    // paper max from its questions so stale saved totals can't inflate the result.
+    const scoreById = new Map(questionEvaluations.map(qe => [qe.questionId, qe.score]));
+    const totals = effectiveTotals(exam.questions, qid => scoreById.get(qid) ?? 0);
+    const totalScore = totals.score;
+    const totalPossible = totals.max;
+    const pct = totalPossible ? Math.round((totalScore / totalPossible) * 100) : 0;
     const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
     const strong = questionEvaluations.filter(q => q.percentage >= 75).map(q => `Strong answer in Q${q.questionNumber}`);
     const weak = questionEvaluations.filter(q => q.percentage < 60).map(q => `Needs improvement in Q${q.questionNumber}`);
@@ -371,13 +376,13 @@ const StudentsAnswers: React.FC = () => {
       examTitle: exam.title,
       studentName: student.name,
       studentEmail: student.email || `${student.rollNumber}@student.local`,
-      totalScore: Math.round(totalScore * 10) / 10,
-      totalPossible: exam.totalMarks,
+      totalScore,
+      totalPossible,
       percentage: pct,
       grade,
       questionEvaluations,
       overallMisconceptions: questionEvaluations.flatMap(q => q.misconceptions),
-      performanceSummary: `${student.name} scored ${Math.round(totalScore * 10) / 10}/${exam.totalMarks} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      performanceSummary: `${student.name} scored ${totalScore}/${totalPossible} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
       strengths: strong.length ? strong : ["No standout strengths detected yet"],
       weaknesses: weak.length ? weak : ["No major weaknesses detected"],
       evaluatedAt: new Date().toISOString(),
