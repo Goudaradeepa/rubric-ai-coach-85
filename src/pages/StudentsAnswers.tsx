@@ -582,7 +582,7 @@ const StudentsAnswers: React.FC = () => {
               <Card key={row.answerId} className="shadow-card">
                 <CardHeader className="pb-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <CardTitle className="font-heading text-base">Q{row.questionNumber} — {row.marks} marks</CardTitle>
+                    <CardTitle className="font-heading text-base">{questionLabel(row.questionNumber, row.subQuestion)} — {row.marks} marks</CardTitle>
                     <div className="flex items-center gap-2 text-xs">
                       <span className="rounded-full bg-muted px-2 py-0.5 font-medium text-muted-foreground">
                         OCR Status: {row.ocrStatus === "done" ? "Done" : "No text found"}
