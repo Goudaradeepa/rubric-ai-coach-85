@@ -28,6 +28,7 @@ interface ExtractedAnswer {
   answerId: string;
   questionId: string;
   questionNumber: number;
+  subQuestion?: string;
   questionText: string;
   marks: number;
   extractedText: string;
@@ -237,6 +238,7 @@ const StudentsAnswers: React.FC = () => {
           answerId: crypto.randomUUID(),
           questionId: q.id,
           questionNumber: q.questionNumber,
+          subQuestion: (q as any).subQuestion,
           questionText: q.questionText,
           marks: q.marks,
           extractedText: isEmpty ? "" : text,
