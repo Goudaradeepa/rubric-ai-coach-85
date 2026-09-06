@@ -129,6 +129,8 @@ export interface ExamEvaluation {
   evaluatedAt: string;
   // Teacher review fields
   teacherReviewed?: boolean;
+  // Blank uploaded sheet (no readable answers) — scored 0 and flagged
+  isBlankSheet?: boolean;
   answerSheetUrl?: string;
   answerSheetFileName?: string;
   ocrFullText?: string;

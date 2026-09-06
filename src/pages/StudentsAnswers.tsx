@@ -264,6 +264,31 @@ const StudentsAnswers: React.FC = () => {
   const runEvaluation = async (row: ExtractedAnswer) => {
     const question = exam?.questions.find(q => q.id === row.questionId);
     if (!question) return;
+    // Blank answer: no readable text — score 0 locally, skip the AI call
+    if (!row.extractedText.trim()) {
+      const evaluation: AnswerEvaluation = {
+        evaluationId: crypto.randomUUID(),
+        totalScore: 0,
+        criterionScores: (question.rubricCriteria ?? []).map(c => ({
+          criterionId: c.id,
+          criterionName: c.name,
+          score: 0,
+          maxScore: c.maxScore,
+          feedback: "No answer detected on the sheet.",
+        })),
+        feedback: "Blank answer — no readable text was extracted for this question.",
+        semanticSimilarity: 0,
+        rubricCoverage: 0,
+        confidenceScore: 1,
+        confidenceLevel: "high",
+        requiresTeacherReview: false,
+        detectedConcepts: [],
+        missingConcepts: [],
+      } as any;
+      setEvaluations(prev => ({ ...prev, [row.answerId]: evaluation }));
+      setReviewDraft(prev => ({ ...prev, [row.answerId]: { finalMarks: "0", comment: "" } }));
+      return;
+    }
     setEvaluating(prev => ({ ...prev, [row.answerId]: true }));
     try {
       const { data, error } = await supabase.functions.invoke("evaluate-answer", {
