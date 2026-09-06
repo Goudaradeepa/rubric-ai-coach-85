@@ -70,6 +70,24 @@ const EvaluationResults: React.FC = () => {
             ))}
           </div>
 
+          {/* Blank sheet flag */}
+          {evaluation.isBlankSheet && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+              <Card className="shadow-card border-warning/40 bg-warning/5">
+                <CardContent className="flex items-center gap-3 py-4">
+                  <AlertTriangle className="h-5 w-5 shrink-0 text-warning" />
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">Blank answer sheet — 0 marks</p>
+                    <p className="text-xs text-muted-foreground">
+                      No readable answers were extracted from the uploaded sheet. The submission is recorded as zero marks and flagged for teacher review.
+                    </p>
+                  </div>
+                  <Badge variant="secondary" className="ml-auto bg-warning/10 text-warning border-warning/20">Blank sheet</Badge>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Scanned answer sheet info */}
           {submission?.submissionType === "scanned" && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>

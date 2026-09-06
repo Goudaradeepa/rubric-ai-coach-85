@@ -264,6 +264,32 @@ const StudentsAnswers: React.FC = () => {
   const runEvaluation = async (row: ExtractedAnswer) => {
     const question = exam?.questions.find(q => q.id === row.questionId);
     if (!question) return;
+    // Blank answer: no readable text — score 0 locally, skip the AI call
+    if (!row.extractedText.trim()) {
+      const evaluation: AnswerEvaluation = {
+        evaluationId: crypto.randomUUID(),
+        totalScore: 0,
+        maxMarks: row.marks,
+        criterionScores: (question.rubricCriteria ?? []).map(c => ({
+          criterionId: c.id,
+          criterionName: c.name,
+          score: 0,
+          maxScore: c.maxScore,
+          feedback: "No answer detected on the sheet.",
+        })),
+        feedback: "Blank answer — no readable text was extracted for this question.",
+        semanticSimilarity: 0,
+        rubricCoverage: 0,
+        confidenceScore: 1,
+        confidenceLevel: "high",
+        requiresTeacherReview: false,
+        detectedConcepts: [],
+        missingConcepts: [],
+      } as any;
+      setEvaluations(prev => ({ ...prev, [row.answerId]: evaluation }));
+      setReviewDraft(prev => ({ ...prev, [row.answerId]: { finalMarks: "0", comment: "" } }));
+      return;
+    }
     setEvaluating(prev => ({ ...prev, [row.answerId]: true }));
     try {
       const { data, error } = await supabase.functions.invoke("evaluate-answer", {
@@ -332,6 +358,9 @@ const StudentsAnswers: React.FC = () => {
   // Publishes the finished evaluation to the Teacher Dashboard, Results and Analytics
   const saveToDashboard = () => {
     if (!exam || !student) return;
+    // A sheet where OCR found no readable answer for any question is blank —
+    // publish it as a flagged zero-mark result instead of a broken row.
+    const isBlankSheet = extracted.length > 0 && extracted.every(r => !r.extractedText.trim());
     const submissionId = crypto.randomUUID();
     const questionEvaluations = extracted.map(row => {
       const ev = evaluations[row.answerId];
@@ -350,7 +379,7 @@ const StudentsAnswers: React.FC = () => {
           description: `Missing or unclear: ${c}`,
           suggestion: `Revise ${c} in ${q?.module ?? exam.title}`,
         })),
-        feedback: ev?.feedback ?? "Not evaluated",
+        feedback: ev?.feedback ?? (isBlankSheet ? "Blank answer sheet — no readable answer detected." : "Not evaluated"),
         semanticSimilarity: ev?.semanticSimilarity ?? 0,
         detectedConcepts: ev?.detectedConcepts ?? [],
         missingConcepts: ev?.missingConcepts ?? [],
@@ -382,7 +411,10 @@ const StudentsAnswers: React.FC = () => {
       grade,
       questionEvaluations,
       overallMisconceptions: questionEvaluations.flatMap(q => q.misconceptions),
-      performanceSummary: `${student.name} scored ${totalScore}/${totalPossible} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      performanceSummary: isBlankSheet
+        ? `${student.name} uploaded a blank or unreadable answer sheet for ${exam.title}. No answers could be extracted, so the submission is scored 0/${totalPossible} and flagged for the teacher.`
+        : `${student.name} scored ${totalScore}/${totalPossible} (${pct}%) on ${exam.title}, evaluated from the uploaded answer sheet using the question rubrics.`,
+      isBlankSheet,
       strengths: strong.length ? strong : ["No standout strengths detected yet"],
       weaknesses: weak.length ? weak : ["No major weaknesses detected"],
       evaluatedAt: new Date().toISOString(),
