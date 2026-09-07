@@ -194,6 +194,8 @@ const StudentsAnswers: React.FC = () => {
     setEvaluations({});
     setSheetUrl(null);
     setOcrFullText("");
+    setDetected(null);
+
     setSaved(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
