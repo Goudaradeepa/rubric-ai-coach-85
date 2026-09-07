@@ -147,6 +147,7 @@ const StudentsAnswers: React.FC = () => {
   const [preview, setPreview] = useState<string | null>(null);
   const [sheetUrl, setSheetUrl] = useState<string | null>(null);
   const [ocrFullText, setOcrFullText] = useState<string>("");
+  const [detected, setDetected] = useState<DetectedSheetInfo | null>(null);
   const [saved, setSaved] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [processed, setProcessed] = useState(false);
@@ -154,6 +155,7 @@ const StudentsAnswers: React.FC = () => {
   const [evaluations, setEvaluations] = useState<Record<string, AnswerEvaluation>>({});
   const [evaluating, setEvaluating] = useState<Record<string, boolean>>({});
   const [reviewDraft, setReviewDraft] = useState<Record<string, { finalMarks: string; comment: string }>>({});
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exam = exams.find(e => e.id === selectedExam);
