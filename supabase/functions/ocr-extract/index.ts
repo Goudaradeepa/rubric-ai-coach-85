@@ -133,7 +133,7 @@ ${Array.isArray(expectedLabels) && expectedLabels.length
                   },
                   totalQuestionsDetected: { type: "number" },
                 },
-                required: ["studentName", "rollNumber", "detectedSubject", "fullText", "answers", "totalQuestionsDetected"],
+                required: ["studentName", "rollNumber", "classSection", "semester", "subjectCode", "examDate", "detectedSubject", "fullText", "answers", "totalQuestionsDetected"],
                 additionalProperties: false,
               },
             },
