@@ -85,6 +85,7 @@ function dedupeExams() {
 function load<T>(key: string, fallback: T): T {
   try {
     migrateLegacy();
+    dedupeExams();
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
