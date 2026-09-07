@@ -24,7 +24,18 @@ interface Student {
   email: string;
 }
 
+interface DetectedSheetInfo {
+  studentName: string;
+  rollNumber: string;
+  classSection: string;
+  semester: string;
+  subjectCode: string;
+  detectedSubject: string;
+  examDate: string;
+}
+
 interface ExtractedAnswer {
+
   answerId: string;
   questionId: string;
   questionNumber: number;
@@ -147,6 +158,7 @@ const StudentsAnswers: React.FC = () => {
   const [preview, setPreview] = useState<string | null>(null);
   const [sheetUrl, setSheetUrl] = useState<string | null>(null);
   const [ocrFullText, setOcrFullText] = useState<string>("");
+  const [detected, setDetected] = useState<DetectedSheetInfo | null>(null);
   const [saved, setSaved] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [processed, setProcessed] = useState(false);
@@ -154,6 +166,7 @@ const StudentsAnswers: React.FC = () => {
   const [evaluations, setEvaluations] = useState<Record<string, AnswerEvaluation>>({});
   const [evaluating, setEvaluating] = useState<Record<string, boolean>>({});
   const [reviewDraft, setReviewDraft] = useState<Record<string, { finalMarks: string; comment: string }>>({});
+
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exam = exams.find(e => e.id === selectedExam);
@@ -181,6 +194,8 @@ const StudentsAnswers: React.FC = () => {
     setEvaluations({});
     setSheetUrl(null);
     setOcrFullText("");
+    setDetected(null);
+
     setSaved(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
@@ -207,13 +222,13 @@ const StudentsAnswers: React.FC = () => {
 
   // POST /answers/sheet — multipart upload of the answer sheet, backend does OCR/HTR + answer extraction
   const handleUploadAndProcess = async () => {
-    if (!student) return toast.error("Select a student first");
     if (!exam) return toast.error("Select a question paper first");
     if (!file) return toast.error("Upload the student's answer sheet");
 
     setProcessing(true);
     try {
-      const path = `${student.id}/${Date.now()}-${file.name}`;
+      const path = `${student?.id ?? "unassigned"}/${Date.now()}-${file.name}`;
+
       const { data: up, error: upErr } = await supabase.storage
         .from("answer-sheets")
         .upload(path, file, { contentType: file.type });

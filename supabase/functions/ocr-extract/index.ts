@@ -41,7 +41,7 @@ You must:
 
     const userPrompt = `Extract all text from this scanned answer sheet. ${questionCount ? `The exam has ${questionCount} questions.` : "Detect how many questions there are."}
 
-Also detect the student's name, roll number/ID, and any exam information visible on the sheet.
+Also detect every identity/exam detail printed or handwritten on the sheet: student name, roll number / USN / register number, class or section, semester, branch, subject/course name, subject/course code and exam date. Only report values that actually appear on the sheet — never guess or invent one; return an empty string when a detail is not present.
 Separate the text by question number. Use the extract_answers tool to return structured results.
 ${Array.isArray(expectedLabels) && expectedLabels.length
   ? `The question paper has these question labels in order: ${expectedLabels.join(", ")}. Return one entry per label using EXACTLY these labels in the questionLabel field (e.g. "1a", "1b", "2a"). Leave extractedText empty for labels the student did not answer.`
@@ -84,12 +84,29 @@ ${Array.isArray(expectedLabels) && expectedLabels.length
                   },
                   rollNumber: {
                     type: "string",
-                    description: "Detected roll number/student ID, or empty string if not found",
+                    description: "Detected roll number / USN / register number, or empty string if not found",
+                  },
+                  classSection: {
+                    type: "string",
+                    description: "Detected class, section or branch, or empty string if not found",
+                  },
+                  semester: {
+                    type: "string",
+                    description: "Detected semester, or empty string if not found",
+                  },
+                  subjectCode: {
+                    type: "string",
+                    description: "Detected subject/course code, or empty string if not found",
+                  },
+                  examDate: {
+                    type: "string",
+                    description: "Detected exam date as printed, or empty string if not found",
                   },
                   detectedSubject: {
                     type: "string",
                     description: "Detected subject/exam name from the sheet, or empty string if not found",
                   },
+
                   fullText: {
                     type: "string",
                     description: "The complete extracted text from the document",
@@ -116,7 +133,7 @@ ${Array.isArray(expectedLabels) && expectedLabels.length
                   },
                   totalQuestionsDetected: { type: "number" },
                 },
-                required: ["studentName", "rollNumber", "detectedSubject", "fullText", "answers", "totalQuestionsDetected"],
+                required: ["studentName", "rollNumber", "classSection", "semester", "subjectCode", "examDate", "detectedSubject", "fullText", "answers", "totalQuestionsDetected"],
                 additionalProperties: false,
               },
             },
