@@ -85,6 +85,7 @@ function dedupeExams() {
 function load<T>(key: string, fallback: T): T {
   try {
     migrateLegacy();
+    dedupeExams();
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
@@ -131,18 +132,36 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const addExam = useCallback((exam: Omit<Exam, "id" | "createdAt" | "totalMarks">) => {
-    // OR alternatives (same orGroup) count once — students answer only one of them
-    const seen = new Map<string, number>();
-    const totalMarks = exam.questions.reduce((s, q) => {
+    // OR alternatives count once at the FULL-question level: a full question's marks
+    // are the sum of its sub-questions (Q1 = 1a + 1b); each orGroup contributes the
+    // largest full-question total. Non-grouped questions add directly.
+    const groupMax = new Map<string, Map<number, number>>();
+    let totalMarks = 0;
+    for (const q of exam.questions) {
       const marks = Number(q.marks) || 0;
       if (q.orGroup) {
-        const prev = seen.get(q.orGroup) ?? 0;
-        if (marks > prev) { seen.set(q.orGroup, marks); return s + marks - prev; }
-        return s;
+        const byQ = groupMax.get(q.orGroup) ?? new Map<number, number>();
+        const key = Number(q.questionNumber) || 0;
+        byQ.set(key, (byQ.get(key) ?? 0) + marks);
+        groupMax.set(q.orGroup, byQ);
+      } else {
+        totalMarks += marks;
       }
-      return s + marks;
-    }, 0);
-    setExams(prev => [...prev, { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks }]);
+    }
+    for (const byQ of groupMax.values()) {
+      totalMarks += Math.max(...byQ.values(), 0);
+    }
+    const record = { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks };
+    // Re-saving the same paper (same title + subject) replaces it instead of duplicating
+    const key = examKey(record);
+    setExams(prev => {
+      const existing = prev.find(e => examKey(e) === key);
+      if (existing) {
+        const merged = { ...record, id: existing.id };
+        return prev.map(e => (e.id === existing.id ? merged : e));
+      }
+      return [...prev, record];
+    });
   }, []);
 
   const addSubmission = useCallback((sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => {

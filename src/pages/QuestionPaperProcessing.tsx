@@ -26,18 +26,25 @@ const QuestionPaperProcessing: React.FC = () => {
   const [subject, setSubject] = useState("");
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
 
-  // OR alternatives (same orGroup) count once toward the total — students answer only one of them
+  // OR alternatives count once at the FULL-question level: a full question's marks are
+  // the sum of its sub-questions (Q1 = 1a + 1b); each orGroup contributes the largest
+  // full-question total. Non-grouped questions add directly.
   const totalMarks = (() => {
-    const seen = new Map<string, number>();
+    const groups = new Map<string, Map<number, number>>();
     let total = 0;
     for (const q of questions) {
       const marks = Number(q.marks) || 0;
       if (q.orGroup) {
-        const prev = seen.get(q.orGroup) ?? 0;
-        if (marks > prev) { total += marks - prev; seen.set(q.orGroup, marks); }
+        const byQ = groups.get(q.orGroup) ?? new Map<number, number>();
+        const key = Number(q.questionNumber) || 0;
+        byQ.set(key, (byQ.get(key) ?? 0) + marks);
+        groups.set(q.orGroup, byQ);
       } else {
         total += marks;
       }
+    }
+    for (const byQ of groups.values()) {
+      total += Math.max(...byQ.values(), 0);
     }
     return total;
   })();
