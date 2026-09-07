@@ -143,7 +143,17 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
       }
       return s + marks;
     }, 0);
-    setExams(prev => [...prev, { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks }]);
+    const record = { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks };
+    // Re-saving the same paper (same title + subject) replaces it instead of duplicating
+    const key = examKey(record);
+    setExams(prev => {
+      const existing = prev.find(e => examKey(e) === key);
+      if (existing) {
+        const merged = { ...record, id: existing.id };
+        return prev.map(e => (e.id === existing.id ? merged : e));
+      }
+      return [...prev, record];
+    });
   }, []);
 
   const addSubmission = useCallback((sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => {
