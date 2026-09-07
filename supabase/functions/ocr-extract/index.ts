@@ -84,12 +84,29 @@ ${Array.isArray(expectedLabels) && expectedLabels.length
                   },
                   rollNumber: {
                     type: "string",
-                    description: "Detected roll number/student ID, or empty string if not found",
+                    description: "Detected roll number / USN / register number, or empty string if not found",
+                  },
+                  classSection: {
+                    type: "string",
+                    description: "Detected class, section or branch, or empty string if not found",
+                  },
+                  semester: {
+                    type: "string",
+                    description: "Detected semester, or empty string if not found",
+                  },
+                  subjectCode: {
+                    type: "string",
+                    description: "Detected subject/course code, or empty string if not found",
+                  },
+                  examDate: {
+                    type: "string",
+                    description: "Detected exam date as printed, or empty string if not found",
                   },
                   detectedSubject: {
                     type: "string",
                     description: "Detected subject/exam name from the sheet, or empty string if not found",
                   },
+
                   fullText: {
                     type: "string",
                     description: "The complete extracted text from the document",
