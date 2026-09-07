@@ -24,7 +24,18 @@ interface Student {
   email: string;
 }
 
+interface DetectedSheetInfo {
+  studentName: string;
+  rollNumber: string;
+  classSection: string;
+  semester: string;
+  subjectCode: string;
+  detectedSubject: string;
+  examDate: string;
+}
+
 interface ExtractedAnswer {
+
   answerId: string;
   questionId: string;
   questionNumber: number;
