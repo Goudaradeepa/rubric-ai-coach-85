@@ -222,13 +222,13 @@ const StudentsAnswers: React.FC = () => {
 
   // POST /answers/sheet — multipart upload of the answer sheet, backend does OCR/HTR + answer extraction
   const handleUploadAndProcess = async () => {
-    if (!student) return toast.error("Select a student first");
     if (!exam) return toast.error("Select a question paper first");
     if (!file) return toast.error("Upload the student's answer sheet");
 
     setProcessing(true);
     try {
-      const path = `${student.id}/${Date.now()}-${file.name}`;
+      const path = `${student?.id ?? "unassigned"}/${Date.now()}-${file.name}`;
+
       const { data: up, error: upErr } = await supabase.storage
         .from("answer-sheets")
         .upload(path, file, { contentType: file.type });
