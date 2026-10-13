@@ -171,6 +171,7 @@ const StudentsAnswers: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exam = exams.find(e => e.id === selectedExam);
   const student = students.find(s => s.id === selectedStudent);
+  const directoryMatch = students.find(s => s.rollNumber.trim().toUpperCase() === newRoll.trim().toUpperCase());
 
   useEffect(() => {
     let active = true;
@@ -583,6 +584,9 @@ const StudentsAnswers: React.FC = () => {
               <div>
                 <Label>USN</Label>
                 <Input value={newRoll} onChange={e => { setNewRoll(e.target.value.toUpperCase()); setSelectedStudent(""); }} placeholder="e.g. 1BM21CS045" />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {directoryMatch ? `Saved match: ${directoryMatch.name}` : "Type a saved USN to fill the name, or enter a name to save a new match."}
+                </p>
               </div>
               <div>
                 <Label>Email (for student lookup)</Label>
@@ -590,7 +594,7 @@ const StudentsAnswers: React.FC = () => {
               </div>
               <div className="flex items-end">
                 <Button variant="outline" onClick={addStudent} className="w-full sm:w-auto">
-                  <UserPlus className="mr-2 h-4 w-4" /> Add
+                  <UserPlus className="mr-2 h-4 w-4" /> {directoryMatch ? "Update match" : "Save USN match"}
                 </Button>
               </div>
             </div>
