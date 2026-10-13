@@ -600,7 +600,15 @@ const StudentsAnswers: React.FC = () => {
             </div>
             <div>
               <Label>Select student</Label>
-              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+              <Select value={selectedStudent} onValueChange={id => {
+                setSelectedStudent(id);
+                const chosen = students.find(s => s.id === id);
+                if (chosen) {
+                  setNewName(chosen.name);
+                  setNewRoll(chosen.rollNumber);
+                  setNewEmail(chosen.email);
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder={students.length ? "Choose a student..." : "Add a student first"} />
                 </SelectTrigger>
