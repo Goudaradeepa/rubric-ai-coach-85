@@ -1,8 +1,8 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Upload, FileText, Image as ImageIcon, Loader2, X, CheckCircle,
-  Sparkles, UserPlus, AlertTriangle, Save,
+  Sparkles, UserPlus, AlertTriangle, Save, Trash2,
 } from "lucide-react";
 import { useEvaluation } from "@/context/EvaluationContext";
 import { Button } from "@/components/ui/button";
@@ -171,19 +171,115 @@ const StudentsAnswers: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exam = exams.find(e => e.id === selectedExam);
   const student = students.find(s => s.id === selectedStudent);
+  const directoryMatch = students.find(s => s.rollNumber.trim().toUpperCase() === newRoll.trim().toUpperCase());
 
-  const addStudent = () => {
+  useEffect(() => {
+    let active = true;
+    const loadDirectory = async () => {
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError) throw userError;
+        if (!user) return;
+        const { data, error } = await supabase
+          .from("student_directory")
+          .select("id, student_name, usn")
+          .eq("teacher_id", user.id)
+          .order("student_name");
+        if (error) throw error;
+        if (active) {
+          setStudents((data ?? []).map(row => ({
+            id: row.id,
+            name: row.student_name,
+            rollNumber: row.usn,
+            email: "",
+          })));
+        }
+      } catch (error) {
+        console.error("Student directory could not be loaded:", error);
+        if (active) toast.error("Saved USN matches could not be loaded");
+      }
+    };
+    void loadDirectory();
+    return () => { active = false; };
+  }, []);
+
+  useEffect(() => {
+    const usn = newRoll.trim().toUpperCase();
+    if (!usn) return;
+    let active = true;
+    const timeout = window.setTimeout(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data, error } = await supabase
+          .from("student_directory")
+          .select("id, student_name, usn")
+          .eq("teacher_id", user.id)
+          .eq("usn", usn)
+          .maybeSingle();
+        if (error) throw error;
+        if (!active || !data) return;
+        setNewName(data.student_name);
+        setSelectedStudent(data.id);
+        setNewEmail(students.find(s => s.id === data.id)?.email ?? "");
+      } catch (error) {
+        console.error("USN lookup failed:", error);
+      }
+    }, 250);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [newRoll, students]);
+
+  const addStudent = async () => {
     if (!newName.trim()) {
       toast.error("Enter the student's name");
       return;
     }
-    const s: Student = { id: crypto.randomUUID(), name: newName.trim(), rollNumber: newRoll.trim() || "—", email: newEmail.trim() };
-    setStudents(prev => [...prev, s]);
-    setSelectedStudent(s.id);
-    setNewName("");
-    setNewRoll("");
-    setNewEmail("");
-    toast.success("Student added");
+    const usn = newRoll.trim().toUpperCase();
+    if (!usn) {
+      toast.error("Enter the student's USN");
+      return;
+    }
+    try {
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      if (userError) throw userError;
+      if (!user) throw new Error("Sign in to save this USN match");
+      const { data, error } = await supabase
+        .from("student_directory")
+        .upsert({
+          teacher_id: user.id,
+          usn,
+          student_name: newName.trim(),
+        }, { onConflict: "teacher_id,usn" })
+        .select("id, student_name, usn")
+        .single();
+      if (error) throw error;
+      const savedStudent: Student = {
+        id: data.id,
+        name: data.student_name,
+        rollNumber: data.usn,
+        email: newEmail.trim(),
+      };
+      setStudents(prev => [savedStudent, ...prev.filter(s => s.id !== savedStudent.id)]);
+      setSelectedStudent(savedStudent.id);
+      toast.success("Student saved to your USN directory");
+    } catch (error) {
+      console.error("Student could not be saved:", error);
+      toast.error(error instanceof Error ? error.message : "Student could not be saved");
+    }
+  };
+
+  const removeStudent = async (id: string) => {
+    const { error } = await supabase.from("student_directory").delete().eq("id", id);
+    if (error) {
+      toast.error("Student could not be removed");
+      return;
+    }
+    setStudents(prev => prev.filter(s => s.id !== id));
+    if (selectedStudent === id) setSelectedStudent("");
+    toast.success("Student removed from your USN directory");
   };
 
   const resetSheet = () => {
@@ -223,6 +319,7 @@ const StudentsAnswers: React.FC = () => {
   // POST /answers/sheet — multipart upload of the answer sheet, backend does OCR/HTR + answer extraction
   const handleUploadAndProcess = async () => {
     if (!exam) return toast.error("Select a question paper first");
+    if (!student) return toast.error("Select or add a student first");
     if (!file) return toast.error("Upload the student's answer sheet");
 
     setProcessing(true);
@@ -482,11 +579,14 @@ const StudentsAnswers: React.FC = () => {
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
               <div>
                 <Label>Student name</Label>
-                <Input value={newName} onChange={e => setNewName(e.target.value)} placeholder="e.g. Anita Rao" />
+                <Input value={newName} onChange={e => { setNewName(e.target.value); setSelectedStudent(""); }} placeholder="e.g. Anita Rao" />
               </div>
               <div>
-                <Label>Roll number</Label>
-                <Input value={newRoll} onChange={e => setNewRoll(e.target.value)} placeholder="e.g. 1BM21CS045" />
+                <Label>USN</Label>
+                <Input value={newRoll} onChange={e => { setNewRoll(e.target.value.toUpperCase()); setSelectedStudent(""); }} placeholder="e.g. 1BM21CS045" />
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {directoryMatch ? `Saved match: ${directoryMatch.name}` : "Type a saved USN to fill the name, or enter a name to save a new match."}
+                </p>
               </div>
               <div>
                 <Label>Email (for student lookup)</Label>
@@ -494,13 +594,21 @@ const StudentsAnswers: React.FC = () => {
               </div>
               <div className="flex items-end">
                 <Button variant="outline" onClick={addStudent} className="w-full sm:w-auto">
-                  <UserPlus className="mr-2 h-4 w-4" /> Add
+                  <UserPlus className="mr-2 h-4 w-4" /> {directoryMatch ? "Update match" : "Save USN match"}
                 </Button>
               </div>
             </div>
             <div>
               <Label>Select student</Label>
-              <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+              <Select value={selectedStudent} onValueChange={id => {
+                setSelectedStudent(id);
+                const chosen = students.find(s => s.id === id);
+                if (chosen) {
+                  setNewName(chosen.name);
+                  setNewRoll(chosen.rollNumber);
+                  setNewEmail(chosen.email);
+                }
+              }}>
                 <SelectTrigger>
                   <SelectValue placeholder={students.length ? "Choose a student..." : "Add a student first"} />
                 </SelectTrigger>
@@ -511,6 +619,24 @@ const StudentsAnswers: React.FC = () => {
                 </SelectContent>
               </Select>
             </div>
+            {students.length > 0 && (
+              <div className="border-t border-border pt-4">
+                <p className="mb-2 text-sm font-medium text-foreground">Saved USN matches</p>
+                <div className="max-h-48 divide-y divide-border overflow-y-auto">
+                  {students.map(s => (
+                    <div key={s.id} className="flex items-center justify-between gap-3 py-2">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-foreground">{s.name}</p>
+                        <p className="text-xs text-muted-foreground">{s.rollNumber}</p>
+                      </div>
+                      <Button variant="ghost" size="icon" onClick={() => void removeStudent(s.id)} aria-label={`Remove ${s.name} from USN directory`} title="Remove USN match">
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </motion.div>
