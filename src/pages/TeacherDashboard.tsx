@@ -39,11 +39,6 @@ const TeacherDashboard: React.FC = () => {
           <p className="mt-1 text-muted-foreground">Create exams, manage submissions, and review AI evaluations</p>
         </div>
         <div className="flex gap-2">
-          <Link to="/teacher-evaluate">
-            <Button variant="outline" className="gap-2">
-              <FileText className="h-4 w-4" /> Upload & Evaluate
-            </Button>
-          </Link>
           <CreateExamDialog />
         </div>
       </div>

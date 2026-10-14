@@ -37,7 +37,11 @@ Read the scanned/exported question paper and extract its complete structure:
 - full question text
 - maximum marks for the question
 - Bloom's Level (BL) and Course Outcome (CO) if printed in the marks table
-- OR relationship: questions that are alternatives within the same module share the same orGroup label (e.g. "M1-OR"); use an empty string when the question has no alternative.
+- Preserve the paper's printed PART/section boundaries and explicit OR separators.
+- For every printed OR separator, assign the full question immediately before it and the full question immediately after it the same unique orGroup label (for example "PART-A-OR-1"). Use a different label for each OR separator, and never group unrelated questions just because they share a module or part.
+- All sub-questions (a, b, etc.) belonging to one numbered full question must use that same questionNumber and their own subQuestion labels. Sum their printed marks as that full question's marks.
+- Questions with no printed OR alternative must use an empty orGroup.
+- The paper's stated Max. Marks is authoritative; count only one full question from each explicit OR group when reconciling the extracted totalMarks.
 Never invent questions that are not present. Keep the printed wording.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
