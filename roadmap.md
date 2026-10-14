@@ -6,4 +6,6 @@
 - [x] Fix OCR answer-to-question mapping for sub-questions (1a/1b)
 - [x] Dedupe exam papers (Test No.1 shown 3x) + replace-on-resave
 - [x] Fix OR-group totals: full question = a+b, group counts best full question (25 not 15)
+- [ ] Re-process Advanced Java Test I with explicit per-OR grouping so its printed 25-mark total is preserved
+- [x] Remove the teacher dashboard's Upload & Evaluate shortcut
 - [ ] Persist exams/evaluations in the cloud database (currently browser-local)
