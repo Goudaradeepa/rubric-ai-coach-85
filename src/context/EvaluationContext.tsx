@@ -3,6 +3,7 @@ import type { Exam, ExamSubmission, ExamEvaluation, ExamQuestion, ReviewQueueIte
 import { mockExams, mockSubmissions, mockEvaluations } from "@/data/mockData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { calculateEffectiveTotals } from "@/lib/exam-scoring";
 
 interface EvaluationContextType {
   exams: Exam[];
@@ -227,7 +228,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         questionEvaluations.find(e => e.questionId === qid)?.score ?? 0
       );
       const totalScore = totals.score;
-      const pct = Math.round((totalScore / exam.totalMarks) * 100);
+      const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;
       const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
       const evaluation: ExamEvaluation = {
@@ -285,38 +286,3 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     </EvaluationContext.Provider>
   );
 };
-
-function calculateEffectiveTotals(
-  questions: ExamQuestion[],
-  scoreFor: (questionId: string) => number,
-) {
-  const groups = new Map<string, Map<number, { score: number; max: number }>>();
-  let score = 0;
-  let max = 0;
-  for (const question of questions) {
-    const questionScore = scoreFor(question.id);
-    const questionMarks = Number(question.marks) || 0;
-    if (question.orGroup) {
-      const byQuestion = groups.get(question.orGroup) ?? new Map<number, { score: number; max: number }>();
-      const number = Number(question.questionNumber) || 0;
-      const current = byQuestion.get(number) ?? { score: 0, max: 0 };
-      current.score += questionScore;
-      current.max += questionMarks;
-      byQuestion.set(number, current);
-      groups.set(question.orGroup, byQuestion);
-    } else {
-      score += questionScore;
-      max += questionMarks;
-    }
-  }
-  for (const byQuestion of groups.values()) {
-    const alternatives = [...byQuestion.values()];
-    const best = alternatives.reduce((winner, current) =>
-      current.score > winner.score || (current.score === winner.score && current.max > winner.max) ? current : winner,
-      { score: 0, max: 0 },
-    );
-    score += best.score;
-    max += Math.max(...alternatives.map(alternative => alternative.max), 0);
-  }
-  return { score: Math.round(score * 10) / 10, max };
-}

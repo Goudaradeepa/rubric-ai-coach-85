@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import type { ExamEvaluation, QuestionEvaluation } from "@/types/evaluation";
+import { calculateEffectiveTotals } from "@/lib/exam-scoring";
 
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
 
@@ -135,15 +136,18 @@ const TeacherUploadEvaluation: React.FC = () => {
         };
       });
 
-      const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
-      const pct = Math.round((totalScore / exam.totalMarks) * 100);
+      const totals = calculateEffectiveTotals(exam.questions, id =>
+        questionEvaluations.find(evaluation => evaluation.questionId === id)?.score ?? 0
+      );
+      const totalScore = totals.score;
+      const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;
       const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
       const evaluation: ExamEvaluation = {
         id: crypto.randomUUID(), submissionId: `teacher-${crypto.randomUUID()}`,
         examId: exam.id, examTitle: exam.title,
         studentName, studentEmail,
-        totalScore: Math.round(totalScore * 10) / 10, totalPossible: exam.totalMarks,
+        totalScore: Math.round(totalScore * 10) / 10, totalPossible: totals.max,
         percentage: pct, grade,
         questionEvaluations,
         overallMisconceptions: questionEvaluations.flatMap(e => e.misconceptions),
@@ -187,7 +191,10 @@ const TeacherUploadEvaluation: React.FC = () => {
 
   const getGrandTotal = () => {
     if (!aiEvaluation) return 0;
-    return aiEvaluation.questionEvaluations.reduce((s, qe) => s + getEditedTotal(qe), 0);
+    return calculateEffectiveTotals(exam?.questions ?? [], id => {
+      const questionEvaluation = aiEvaluation.questionEvaluations.find(qe => qe.questionId === id);
+      return questionEvaluation ? getEditedTotal(questionEvaluation) : 0;
+    }).score;
   };
 
   const handleFinalize = () => {
@@ -201,14 +208,18 @@ const TeacherUploadEvaluation: React.FC = () => {
       return { ...qe, score: Math.round(score * 10) / 10, percentage: Math.round((score / qe.maxMarks) * 100), criterionScores: newCriterionScores };
     });
 
-    const totalScore = finalQEvals.reduce((s, qe) => s + qe.score, 0);
-    const pct = Math.round((totalScore / exam.totalMarks) * 100);
+    const totals = calculateEffectiveTotals(exam.questions, id =>
+      finalQEvals.find(qe => qe.questionId === id)?.score ?? 0
+    );
+    const totalScore = totals.score;
+    const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;
     const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
     const finalEval: ExamEvaluation = {
       ...aiEvaluation,
       questionEvaluations: finalQEvals,
       totalScore: Math.round(totalScore * 10) / 10,
+      totalPossible: totals.max,
       percentage: pct,
       grade,
       teacherReviewed: true,
