@@ -3,6 +3,7 @@ import type { Exam, ExamSubmission, ExamEvaluation, ExamQuestion, ReviewQueueIte
 import { mockExams, mockSubmissions, mockEvaluations } from "@/data/mockData";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { calculateEffectiveTotals } from "@/lib/exam-scoring";
 
 interface EvaluationContextType {
   exams: Exam[];
@@ -222,14 +223,18 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         };
       });
 
-      const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
-      const pct = Math.round((totalScore / exam.totalMarks) * 100);
+      // Count only the best-scoring full question in each OR group.
+      const totals = calculateEffectiveTotals(exam.questions, qid =>
+        questionEvaluations.find(e => e.questionId === qid)?.score ?? 0
+      );
+      const totalScore = totals.score;
+      const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;
       const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
       const evaluation: ExamEvaluation = {
         id: crypto.randomUUID(), submissionId, examId: exam.id, examTitle: exam.title,
         studentName: sub.studentName, studentEmail: sub.studentEmail,
-        totalScore: Math.round(totalScore * 10) / 10, totalPossible: exam.totalMarks, percentage: pct, grade,
+        totalScore: Math.round(totalScore * 10) / 10, totalPossible: totals.max, percentage: pct, grade,
         questionEvaluations,
         overallMisconceptions: questionEvaluations.flatMap(e => e.misconceptions),
         performanceSummary: aiResult.performanceSummary,
