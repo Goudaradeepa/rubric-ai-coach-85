@@ -222,14 +222,18 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
         };
       });
 
-      const totalScore = questionEvaluations.reduce((s, e) => s + e.score, 0);
+      // Count only the best-scoring full question in each OR group.
+      const totals = calculateEffectiveTotals(exam.questions, qid =>
+        questionEvaluations.find(e => e.questionId === qid)?.score ?? 0
+      );
+      const totalScore = totals.score;
       const pct = Math.round((totalScore / exam.totalMarks) * 100);
       const grade = pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
 
       const evaluation: ExamEvaluation = {
         id: crypto.randomUUID(), submissionId, examId: exam.id, examTitle: exam.title,
         studentName: sub.studentName, studentEmail: sub.studentEmail,
-        totalScore: Math.round(totalScore * 10) / 10, totalPossible: exam.totalMarks, percentage: pct, grade,
+        totalScore: Math.round(totalScore * 10) / 10, totalPossible: totals.max, percentage: pct, grade,
         questionEvaluations,
         overallMisconceptions: questionEvaluations.flatMap(e => e.misconceptions),
         performanceSummary: aiResult.performanceSummary,
@@ -281,3 +285,38 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     </EvaluationContext.Provider>
   );
 };
+
+function calculateEffectiveTotals(
+  questions: ExamQuestion[],
+  scoreFor: (questionId: string) => number,
+) {
+  const groups = new Map<string, Map<number, { score: number; max: number }>>();
+  let score = 0;
+  let max = 0;
+  for (const question of questions) {
+    const questionScore = scoreFor(question.id);
+    const questionMarks = Number(question.marks) || 0;
+    if (question.orGroup) {
+      const byQuestion = groups.get(question.orGroup) ?? new Map<number, { score: number; max: number }>();
+      const number = Number(question.questionNumber) || 0;
+      const current = byQuestion.get(number) ?? { score: 0, max: 0 };
+      current.score += questionScore;
+      current.max += questionMarks;
+      byQuestion.set(number, current);
+      groups.set(question.orGroup, byQuestion);
+    } else {
+      score += questionScore;
+      max += questionMarks;
+    }
+  }
+  for (const byQuestion of groups.values()) {
+    const alternatives = [...byQuestion.values()];
+    const best = alternatives.reduce((winner, current) =>
+      current.score > winner.score || (current.score === winner.score && current.max > winner.max) ? current : winner,
+      { score: 0, max: 0 },
+    );
+    score += best.score;
+    max += Math.max(...alternatives.map(alternative => alternative.max), 0);
+  }
+  return { score: Math.round(score * 10) / 10, max };
+}
