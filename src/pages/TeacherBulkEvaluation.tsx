@@ -449,7 +449,7 @@ const TeacherBulkEvaluation: React.FC = () => {
                     {sheets.filter(s => s.status !== "queued" && s.status !== "uploading" && s.status !== "ocr" && s.status !== "evaluating").map(sheet => {
                       const isExpanded = expandedSheet === sheet.id;
                       const editedTotal = getEditedTotal(sheet);
-                      const editedPct = sheet.evaluation ? Math.round((editedTotal / sheet.evaluation.totalPossible) * 100) : 0;
+                      const editedPct = sheet.evaluation?.totalPossible ? Math.round((editedTotal / sheet.evaluation.totalPossible) * 100) : 0;
 
                       return (
                         <React.Fragment key={sheet.id}>
