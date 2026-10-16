@@ -9,7 +9,7 @@ interface EvaluationContextType {
   exams: Exam[];
   submissions: ExamSubmission[];
   evaluations: ExamEvaluation[];
-  addExam: (exam: Omit<Exam, "id" | "createdAt"> & { totalMarks?: number }) => void;
+  addExam: (exam: Omit<Exam, "id" | "createdAt" | "totalMarks"> & { totalMarks?: number }) => void;
   addSubmission: (sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => void;
   evaluateSubmission: (submissionId: string) => Promise<void>;
   addTeacherEvaluation: (evaluation: ExamEvaluation) => void;
@@ -98,7 +98,7 @@ function loadExams(): Exam[] {
   return load<Exam[]>("exams", mockExams).map(exam => ({
     ...exam,
     // Repair older browser-saved totals after the OR/sub-question scoring fix.
-    totalMarks: calculateEffectiveTotals(exam.questions || [], () => 0, exam.totalMarks).max,
+    totalMarks: calculateEffectiveTotals(exam.questions || [], () => 0, exam.printedTotalMarks).max,
   }));
 }
 
@@ -154,8 +154,8 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setReviewQueue(prev => prev.map(r => r.id === id ? { ...r, status: action, finalMarks, teacherComment: comment } : r));
   }, []);
 
-  const addExam = useCallback((exam: Omit<Exam, "id" | "createdAt"> & { totalMarks?: number }) => {
-    const totalMarks = calculateEffectiveTotals(exam.questions, () => 0, exam.totalMarks).max;
+  const addExam = useCallback((exam: Omit<Exam, "id" | "createdAt" | "totalMarks"> & { totalMarks?: number }) => {
+    const totalMarks = calculateEffectiveTotals(exam.questions, () => 0, exam.printedTotalMarks).max;
     const record = { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks };
     // Re-saving the same paper (same title + subject) replaces it instead of duplicating
     const key = examKey(record);

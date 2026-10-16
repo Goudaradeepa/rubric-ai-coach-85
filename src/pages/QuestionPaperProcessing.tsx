@@ -136,7 +136,7 @@ const QuestionPaperProcessing: React.FC = () => {
     if (!paperTitle.trim()) return toast.error("Enter a paper title");
     if (!rubricsReady) return toast.error("Every question needs a rubric");
     if (questions.some(q => !q.rubricApproved)) return toast.error("Approve every rubric before saving");
-    addExam({ title: paperTitle, subject: subject || "General", questions, totalMarks: paperMaximum });
+    addExam({ title: paperTitle, subject: subject || "General", questions, printedTotalMarks: paperMaximum });
     toast.success("Question paper saved with approved rubrics");
     navigate("/students-answers");
   };
