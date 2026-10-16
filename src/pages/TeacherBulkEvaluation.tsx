@@ -169,7 +169,7 @@ const TeacherBulkEvaluation: React.FC = () => {
         });
 
         const totals = calculateEffectiveTotals(exam.questions, id =>
-          questionEvaluations.find(evaluation => evaluation.questionId === id)?.score ?? 0
+          questionEvaluations.find(evaluation => evaluation.questionId === id)?.score ?? 0, exam.totalMarks
         );
         const totalScore = totals.score;
         const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;
@@ -231,7 +231,7 @@ const TeacherBulkEvaluation: React.FC = () => {
       if (!qe) return 0;
       const qScores = sheet.editedScores[qe.questionId] || {};
       return qe.criterionScores.reduce((sum, criterion) => sum + (qScores[criterion.criterionId] ?? criterion.score), 0);
-    }).score;
+    }, exam.totalMarks).score;
   };
 
   const getGrade = (pct: number) => pct >= 90 ? "A+" : pct >= 80 ? "A" : pct >= 70 ? "B" : pct >= 60 ? "C" : pct >= 50 ? "D" : "F";
@@ -252,7 +252,7 @@ const TeacherBulkEvaluation: React.FC = () => {
     });
 
     const totals = calculateEffectiveTotals(exam.questions, id =>
-      finalQEvals.find(qe => qe.questionId === id)?.score ?? 0
+      finalQEvals.find(qe => qe.questionId === id)?.score ?? 0, exam.totalMarks
     );
     const totalScore = totals.score;
     const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;

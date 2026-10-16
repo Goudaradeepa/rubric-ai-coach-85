@@ -137,7 +137,7 @@ const TeacherUploadEvaluation: React.FC = () => {
       });
 
       const totals = calculateEffectiveTotals(exam.questions, id =>
-        questionEvaluations.find(evaluation => evaluation.questionId === id)?.score ?? 0
+        questionEvaluations.find(evaluation => evaluation.questionId === id)?.score ?? 0, exam.totalMarks
       );
       const totalScore = totals.score;
       const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;
@@ -194,7 +194,7 @@ const TeacherUploadEvaluation: React.FC = () => {
     return calculateEffectiveTotals(exam?.questions ?? [], id => {
       const questionEvaluation = aiEvaluation.questionEvaluations.find(qe => qe.questionId === id);
       return questionEvaluation ? getEditedTotal(questionEvaluation) : 0;
-    }).score;
+    }, exam?.totalMarks).score;
   };
 
   const handleFinalize = () => {
@@ -209,7 +209,7 @@ const TeacherUploadEvaluation: React.FC = () => {
     });
 
     const totals = calculateEffectiveTotals(exam.questions, id =>
-      finalQEvals.find(qe => qe.questionId === id)?.score ?? 0
+      finalQEvals.find(qe => qe.questionId === id)?.score ?? 0, exam.totalMarks
     );
     const totalScore = totals.score;
     const pct = totals.max ? Math.round((totalScore / totals.max) * 100) : 0;

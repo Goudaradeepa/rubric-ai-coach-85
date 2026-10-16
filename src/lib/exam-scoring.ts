@@ -3,6 +3,7 @@ import type { ExamQuestion } from "@/types/evaluation";
 export function calculateEffectiveTotals(
   questions: Pick<ExamQuestion, "id" | "marks" | "orGroup" | "questionNumber">[],
   scoreFor: (questionId: string) => number,
+  paperMaximum?: number,
 ) {
   const groups = new Map<string, Map<number, { score: number; max: number }>>();
   let score = 0;
@@ -35,5 +36,9 @@ export function calculateEffectiveTotals(
     max += Math.max(...alternatives.map(alternative => alternative.max), 0);
   }
 
-  return { score: Math.round(score * 10) / 10, max };
+  const authoritativeMaximum = Number(paperMaximum);
+  const effectiveMax = Number.isFinite(authoritativeMaximum) && authoritativeMaximum > 0
+    ? authoritativeMaximum
+    : max;
+  return { score: Math.round(score * 10) / 10, max: effectiveMax };
 }

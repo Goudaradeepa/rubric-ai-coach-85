@@ -50,6 +50,7 @@ export interface Exam {
   title: string;
   subject: string;
   totalMarks: number;
+  printedTotalMarks?: number;
   questions: ExamQuestion[];
   createdAt: string;
 }

@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { toast } from "sonner";
 import type { ExamQuestion, RubricCriterion } from "@/types/evaluation";
+import { calculateEffectiveTotals } from "@/lib/exam-scoring";
 
 const ACCEPTED = ["application/pdf", "image/png", "image/jpeg", "image/jpg"];
 
@@ -24,30 +25,10 @@ const QuestionPaperProcessing: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [paperTitle, setPaperTitle] = useState("");
   const [subject, setSubject] = useState("");
+  const [paperMaximum, setPaperMaximum] = useState<number | undefined>();
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
 
-  // OR alternatives count once at the FULL-question level: a full question's marks are
-  // the sum of its sub-questions (Q1 = 1a + 1b); each orGroup contributes the largest
-  // full-question total. Non-grouped questions add directly.
-  const totalMarks = (() => {
-    const groups = new Map<string, Map<number, number>>();
-    let total = 0;
-    for (const q of questions) {
-      const marks = Number(q.marks) || 0;
-      if (q.orGroup) {
-        const byQ = groups.get(q.orGroup) ?? new Map<number, number>();
-        const key = Number(q.questionNumber) || 0;
-        byQ.set(key, (byQ.get(key) ?? 0) + marks);
-        groups.set(q.orGroup, byQ);
-      } else {
-        total += marks;
-      }
-    }
-    for (const byQ of groups.values()) {
-      total += Math.max(...byQ.values(), 0);
-    }
-    return total;
-  })();
+  const totalMarks = calculateEffectiveTotals(questions, () => 0, paperMaximum).max;
   const rubricsReady = questions.length > 0 && questions.every(q => q.rubricCriteria.length > 0);
 
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -77,6 +58,7 @@ const QuestionPaperProcessing: React.FC = () => {
 
       setPaperTitle(data.examTitle || file.name.replace(/\.[^.]+$/, ""));
       setSubject([data.subject, data.courseCode].filter(Boolean).join(" · ") || "General");
+      setPaperMaximum(Number(data.totalMarks) > 0 ? Number(data.totalMarks) : undefined);
       setQuestions((data.questions || []).map((q: any, i: number) => ({
         id: crypto.randomUUID(),
         questionNumber: Number(q.questionNumber) || i + 1,
@@ -154,7 +136,7 @@ const QuestionPaperProcessing: React.FC = () => {
     if (!paperTitle.trim()) return toast.error("Enter a paper title");
     if (!rubricsReady) return toast.error("Every question needs a rubric");
     if (questions.some(q => !q.rubricApproved)) return toast.error("Approve every rubric before saving");
-    addExam({ title: paperTitle, subject: subject || "General", questions });
+    addExam({ title: paperTitle, subject: subject || "General", questions, printedTotalMarks: paperMaximum });
     toast.success("Question paper saved with approved rubrics");
     navigate("/students-answers");
   };
