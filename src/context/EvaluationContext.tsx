@@ -94,6 +94,28 @@ function load<T>(key: string, fallback: T): T {
   }
 }
 
+function loadExams(): Exam[] {
+  return load<Exam[]>("exams", mockExams).map(exam => ({
+    ...exam,
+    // Repair older browser-saved totals after the OR/sub-question scoring fix.
+    totalMarks: calculateEffectiveTotals(exam.questions || [], () => 0).max,
+  }));
+}
+
+function loadEvaluations(): ExamEvaluation[] {
+  const examsById = new Map(loadExams().map(exam => [exam.id, exam]));
+  return load<ExamEvaluation[]>("evaluations", mockEvaluations).map(evaluation => {
+    const exam = examsById.get(evaluation.examId);
+    if (!exam) return evaluation;
+    const totals = calculateEffectiveTotals(exam.questions, questionId =>
+      evaluation.questionEvaluations.find(question => question.questionId === questionId)?.score ?? 0
+    );
+    const percentage = totals.max ? Math.round((totals.score / totals.max) * 100) : 0;
+    const grade = percentage >= 90 ? "A+" : percentage >= 80 ? "A" : percentage >= 70 ? "B" : percentage >= 60 ? "C" : percentage >= 50 ? "D" : "F";
+    return { ...evaluation, totalScore: totals.score, totalPossible: totals.max, percentage, grade };
+  });
+}
+
 function save(key: string, value: unknown) {
   try {
     localStorage.setItem(STORAGE_PREFIX + key, JSON.stringify(value));
@@ -111,9 +133,9 @@ export const useEvaluation = () => {
 };
 
 export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [exams, setExams] = useState<Exam[]>(() => load("exams", mockExams));
+  const [exams, setExams] = useState<Exam[]>(loadExams);
   const [submissions, setSubmissions] = useState<ExamSubmission[]>(() => load("submissions", mockSubmissions));
-  const [evaluations, setEvaluations] = useState<ExamEvaluation[]>(() => load("evaluations", mockEvaluations));
+  const [evaluations, setEvaluations] = useState<ExamEvaluation[]>(loadEvaluations);
   const [reviewQueue, setReviewQueue] = useState<ReviewQueueItem[]>(() => load<ReviewQueueItem[]>("reviewQueue", []));
 
   useEffect(() => { save("exams", exams); }, [exams]);
@@ -133,25 +155,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   }, []);
 
   const addExam = useCallback((exam: Omit<Exam, "id" | "createdAt" | "totalMarks">) => {
-    // OR alternatives count once at the FULL-question level: a full question's marks
-    // are the sum of its sub-questions (Q1 = 1a + 1b); each orGroup contributes the
-    // largest full-question total. Non-grouped questions add directly.
-    const groupMax = new Map<string, Map<number, number>>();
-    let totalMarks = 0;
-    for (const q of exam.questions) {
-      const marks = Number(q.marks) || 0;
-      if (q.orGroup) {
-        const byQ = groupMax.get(q.orGroup) ?? new Map<number, number>();
-        const key = Number(q.questionNumber) || 0;
-        byQ.set(key, (byQ.get(key) ?? 0) + marks);
-        groupMax.set(q.orGroup, byQ);
-      } else {
-        totalMarks += marks;
-      }
-    }
-    for (const byQ of groupMax.values()) {
-      totalMarks += Math.max(...byQ.values(), 0);
-    }
+    const totalMarks = calculateEffectiveTotals(exam.questions, () => 0).max;
     const record = { ...exam, id: crypto.randomUUID(), createdAt: new Date().toISOString(), totalMarks };
     // Re-saving the same paper (same title + subject) replaces it instead of duplicating
     const key = examKey(record);

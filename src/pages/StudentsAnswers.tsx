@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateEffectiveTotals } from "@/lib/exam-scoring";
 
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
 
@@ -71,48 +72,6 @@ function normalizeOcrKey(a: any): string {
 function questionLabel(num: number, sub?: string): string {
   const s = (sub || "").toLowerCase().replace(/[^a-z]/g, "");
   return `Q${num}${s}`;
-}
-
-// OR alternatives count once at the FULL-question level: Q1 (a+b) vs Q2 (a+b).
-// A student's sub-question scores within the chosen question add up; only the
-// best-scoring full question in each orGroup counts toward the total.
-function effectiveTotals(
-  questions: { id: string; marks: number; orGroup?: string; questionNumber?: number }[],
-  scoreFor: (questionId: string) => number
-) {
-  // orGroup -> questionNumber -> { score, max }
-  const groups = new Map<string, Map<number, { score: number; max: number }>>();
-  let score = 0;
-  let max = 0;
-  for (const q of questions) {
-    const s = scoreFor(q.id);
-    const m = Number(q.marks) || 0;
-    if (q.orGroup) {
-      const byQ = groups.get(q.orGroup) ?? new Map<number, { score: number; max: number }>();
-      const key = q.questionNumber ?? 0;
-      const cur = byQ.get(key) ?? { score: 0, max: 0 };
-      cur.score += s;
-      cur.max += m;
-      byQ.set(key, cur);
-      groups.set(q.orGroup, byQ);
-    } else {
-      score += s;
-      max += m;
-    }
-  }
-  for (const byQ of groups.values()) {
-    let bestScore = 0;
-    let bestMax = 0;
-    for (const fq of byQ.values()) {
-      if (fq.score > bestScore || (fq.score === bestScore && fq.max > bestMax)) {
-        bestScore = fq.score;
-        bestMax = fq.max;
-      }
-    }
-    score += bestScore;
-    max += Math.max(...[...byQ.values()].map(f => f.max), 0);
-  }
-  return { score: Math.round(score * 10) / 10, max };
 }
 
 
