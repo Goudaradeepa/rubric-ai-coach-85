@@ -474,7 +474,7 @@ const StudentsAnswers: React.FC = () => {
     // OR alternatives count once — best-scoring alternative wins; recompute the
     // paper max from its questions so stale saved totals can't inflate the result.
     const scoreById = new Map(questionEvaluations.map(qe => [qe.questionId, qe.score]));
-    const totals = calculateEffectiveTotals(exam.questions, qid => scoreById.get(qid) ?? 0);
+    const totals = calculateEffectiveTotals(exam.questions, qid => scoreById.get(qid) ?? 0, exam.totalMarks);
     const totalScore = totals.score;
     const totalPossible = totals.max;
     const pct = totalPossible ? Math.round((totalScore / totalPossible) * 100) : 0;
@@ -516,7 +516,7 @@ const StudentsAnswers: React.FC = () => {
         const row = extracted.find(r => r.questionId === qid);
         const ev = row ? evaluations[row.answerId] : undefined;
         return ev?.review?.finalMarks ?? ev?.totalScore ?? 0;
-      })
+      }, exam.totalMarks)
     : { score: 0, max: 0 };
 
   return (

@@ -25,9 +25,10 @@ const QuestionPaperProcessing: React.FC = () => {
   const [generating, setGenerating] = useState(false);
   const [paperTitle, setPaperTitle] = useState("");
   const [subject, setSubject] = useState("");
+  const [paperMaximum, setPaperMaximum] = useState<number | undefined>();
   const [questions, setQuestions] = useState<ExamQuestion[]>([]);
 
-  const totalMarks = calculateEffectiveTotals(questions, () => 0).max;
+  const totalMarks = calculateEffectiveTotals(questions, () => 0, paperMaximum).max;
   const rubricsReady = questions.length > 0 && questions.every(q => q.rubricCriteria.length > 0);
 
   const onSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -57,6 +58,7 @@ const QuestionPaperProcessing: React.FC = () => {
 
       setPaperTitle(data.examTitle || file.name.replace(/\.[^.]+$/, ""));
       setSubject([data.subject, data.courseCode].filter(Boolean).join(" · ") || "General");
+      setPaperMaximum(Number(data.totalMarks) > 0 ? Number(data.totalMarks) : undefined);
       setQuestions((data.questions || []).map((q: any, i: number) => ({
         id: crypto.randomUUID(),
         questionNumber: Number(q.questionNumber) || i + 1,
@@ -134,7 +136,7 @@ const QuestionPaperProcessing: React.FC = () => {
     if (!paperTitle.trim()) return toast.error("Enter a paper title");
     if (!rubricsReady) return toast.error("Every question needs a rubric");
     if (questions.some(q => !q.rubricApproved)) return toast.error("Approve every rubric before saving");
-    addExam({ title: paperTitle, subject: subject || "General", questions });
+    addExam({ title: paperTitle, subject: subject || "General", questions, totalMarks: paperMaximum });
     toast.success("Question paper saved with approved rubrics");
     navigate("/students-answers");
   };

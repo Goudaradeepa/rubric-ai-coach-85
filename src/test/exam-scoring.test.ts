@@ -21,4 +21,12 @@ describe("calculateEffectiveTotals", () => {
 
     expect(calculateEffectiveTotals(questions, id => scores[id] ?? 0)).toEqual({ score: 21, max: 25 });
   });
+
+  it("uses the printed paper maximum when OCR provides it", () => {
+    const questions = [
+      { id: "1", questionNumber: 1, marks: 10 },
+      { id: "2", questionNumber: 2, marks: 5 },
+    ];
+    expect(calculateEffectiveTotals(questions, () => 0, 25)).toEqual({ score: 0, max: 25 });
+  });
 });
