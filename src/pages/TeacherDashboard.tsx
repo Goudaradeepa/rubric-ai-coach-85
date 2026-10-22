@@ -9,10 +9,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 import type { ExamQuestion, RubricCriterion } from "@/types/evaluation";
 
 const TeacherDashboard: React.FC = () => {
-  const { exams, submissions, evaluations, evaluateSubmission } = useEvaluation();
+  const { exams, submissions, evaluations, evaluateSubmission, removeExam } = useEvaluation();
   const [evaluating, setEvaluating] = useState<string | null>(null);
 
   const pendingCount = submissions.filter(s => !s.evaluated).length;
@@ -74,7 +75,23 @@ const TeacherDashboard: React.FC = () => {
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
                       <CardTitle className="font-heading text-lg">{exam.title}</CardTitle>
-                      <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">{exam.subject}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="rounded-full bg-accent/10 px-3 py-1 text-xs font-medium text-accent">{exam.subject}</span>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          aria-label={`Delete ${exam.title}`}
+                          onClick={() => {
+                            if (window.confirm(`Delete "${exam.title}"? Its submissions and saved results will also be removed.`)) {
+                              removeExam(exam.id);
+                              toast.success("Exam paper removed");
+                            }
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">

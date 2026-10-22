@@ -10,6 +10,7 @@ interface EvaluationContextType {
   submissions: ExamSubmission[];
   evaluations: ExamEvaluation[];
   addExam: (exam: Omit<Exam, "id" | "createdAt" | "totalMarks"> & { totalMarks?: number }) => void;
+  removeExam: (examId: string) => void;
   addSubmission: (sub: Omit<ExamSubmission, "id" | "submittedAt" | "evaluated">) => void;
   evaluateSubmission: (submissionId: string) => Promise<void>;
   addTeacherEvaluation: (evaluation: ExamEvaluation) => void;
@@ -87,10 +88,37 @@ function load<T>(key: string, fallback: T): T {
   try {
     migrateLegacy();
     dedupeExams();
+    cleanupRemovedTitles();
     const raw = localStorage.getItem(STORAGE_PREFIX + key);
     return raw ? (JSON.parse(raw) as T) : fallback;
   } catch {
     return fallback;
+  }
+}
+
+/** One-time cleanup: drop papers the teacher asked to remove from the dashboard. */
+const REMOVED_TITLE_PATTERNS = ["biology mid", "test no. 1", "test no.1", "test no 1"];
+function cleanupRemovedTitles() {
+  try {
+    if (localStorage.getItem(STORAGE_PREFIX + "titles-cleaned")) return;
+    const read = (k: string) => {
+      const raw = localStorage.getItem(STORAGE_PREFIX + k);
+      return raw ? JSON.parse(raw) as any[] : null;
+    };
+    const exams = (read("exams") || []);
+    const removed = exams.filter(e => REMOVED_TITLE_PATTERNS.some(p => String(e?.title || "").toLowerCase().includes(p)));
+    if (removed.length === 0) { localStorage.setItem(STORAGE_PREFIX + "titles-cleaned", "1"); return; }
+    const removedIds = new Set(removed.map(e => e.id));
+    const removedQuestionIds = new Set(removed.flatMap(e => (e?.questions || []).map((q: any) => q.id)));
+    const notExam = (r: any) => !removedIds.has(r?.examId);
+    const notQuestion = (r: any) => !removedQuestionIds.has(r?.questionId);
+    localStorage.setItem(STORAGE_PREFIX + "exams", JSON.stringify(exams.filter(e => !removedIds.has(e.id))));
+    localStorage.setItem(STORAGE_PREFIX + "submissions", JSON.stringify((read("submissions") || []).filter(notExam)));
+    localStorage.setItem(STORAGE_PREFIX + "evaluations", JSON.stringify((read("evaluations") || []).filter(notExam)));
+    localStorage.setItem(STORAGE_PREFIX + "reviewQueue", JSON.stringify((read("reviewQueue") || []).filter(notQuestion)));
+    localStorage.setItem(STORAGE_PREFIX + "titles-cleaned", "1");
+  } catch {
+    /* storage unavailable */
   }
 }
 
@@ -292,12 +320,21 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setEvaluations(prev => [...prev, evaluation]);
   }, [submissions]);
 
+  const removeExam = useCallback((examId: string) => {
+    const exam = exams.find(e => e.id === examId);
+    const questionIds = new Set((exam?.questions || []).map(q => q.id));
+    setExams(prev => prev.filter(e => e.id !== examId));
+    setSubmissions(prev => prev.filter(s => s.examId !== examId));
+    setEvaluations(prev => prev.filter(e => e.examId !== examId));
+    setReviewQueue(prev => prev.filter(r => !questionIds.has(r.questionId)));
+  }, [exams]);
+
   const getExamById = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
   const getEvaluationBySubmissionId = useCallback((id: string) => evaluations.find(e => e.submissionId === id), [evaluations]);
   const getStudentEvaluations = useCallback((email: string) => evaluations.filter(e => e.studentEmail === email), [evaluations]);
 
   return (
-    <EvaluationContext.Provider value={{ exams, submissions, evaluations, reviewQueue, addReviewItem, resolveReviewItem, addExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
+    <EvaluationContext.Provider value={{ exams, submissions, evaluations, reviewQueue, addReviewItem, resolveReviewItem, addExam, removeExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
       {children}
     </EvaluationContext.Provider>
   );
