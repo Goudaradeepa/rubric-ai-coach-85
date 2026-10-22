@@ -29,4 +29,15 @@ describe("calculateEffectiveTotals", () => {
     ];
     expect(calculateEffectiveTotals(questions, () => 0, 25)).toEqual({ score: 0, max: 25 });
   });
+
+  it("does not keep a stale 15-mark header when correctly grouped questions total 25", () => {
+    const questions = [
+      { id: "1a", questionNumber: 1, orGroup: "first", marks: 5 },
+      { id: "1b", questionNumber: 1, orGroup: "first", marks: 5 },
+      { id: "2a", questionNumber: 2, orGroup: "first", marks: 5 },
+      { id: "2b", questionNumber: 2, orGroup: "first", marks: 5 },
+      { id: "3", questionNumber: 3, marks: 5 },
+    ];
+    expect(calculateEffectiveTotals(questions, () => 0, 15)).toEqual({ score: 0, max: 25 });
+  });
 });
