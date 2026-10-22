@@ -95,11 +95,22 @@ function load<T>(key: string, fallback: T): T {
 }
 
 function loadExams(): Exam[] {
-  return load<Exam[]>("exams", mockExams).map(exam => ({
-    ...exam,
-    // Repair older browser-saved totals after the OR/sub-question scoring fix.
-    totalMarks: calculateEffectiveTotals(exam.questions || [], () => 0, exam.printedTotalMarks).max,
-  }));
+  return load<Exam[]>("exams", mockExams).map(exam => {
+    const identity = `${exam.title} ${exam.subject}`.toLowerCase();
+    // This previously saved Advanced Java Test I is known from its printed paper to be 25 marks.
+    const legacyAdvancedJavaMax = exam.totalMarks === 15
+      && identity.includes("advanced java")
+      && /test\s*(?:no\.?\s*)?1\b|test\s*i\b/.test(identity)
+      ? 25
+      : undefined;
+    const printedTotalMarks = exam.printedTotalMarks ?? legacyAdvancedJavaMax;
+    return {
+      ...exam,
+      ...(legacyAdvancedJavaMax ? { printedTotalMarks: legacyAdvancedJavaMax } : {}),
+      // Repair older browser-saved totals after the OR/sub-question scoring fix.
+      totalMarks: calculateEffectiveTotals(exam.questions || [], () => 0, printedTotalMarks).max,
+    };
+  });
 }
 
 function loadEvaluations(): ExamEvaluation[] {
@@ -108,7 +119,8 @@ function loadEvaluations(): ExamEvaluation[] {
     const exam = examsById.get(evaluation.examId);
     if (!exam) return evaluation;
     const totals = calculateEffectiveTotals(exam.questions, questionId =>
-      evaluation.questionEvaluations.find(question => question.questionId === questionId)?.score ?? 0
+      evaluation.questionEvaluations.find(question => question.questionId === questionId)?.score ?? 0,
+      exam.printedTotalMarks,
     );
     const percentage = totals.max ? Math.round((totals.score / totals.max) * 100) : 0;
     const grade = percentage >= 90 ? "A+" : percentage >= 80 ? "A" : percentage >= 70 ? "B" : percentage >= 60 ? "C" : percentage >= 50 ? "D" : "F";
