@@ -334,7 +334,7 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
   const getStudentEvaluations = useCallback((email: string) => evaluations.filter(e => e.studentEmail === email), [evaluations]);
 
   return (
-    <EvaluationContext.Provider value={{ exams, submissions, evaluations, reviewQueue, addReviewItem, resolveReviewItem, addExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
+    <EvaluationContext.Provider value={{ exams, submissions, evaluations, reviewQueue, addReviewItem, resolveReviewItem, addExam, removeExam, addSubmission, evaluateSubmission, addTeacherEvaluation, getExamById, getEvaluationBySubmissionId, getStudentEvaluations }}>
       {children}
     </EvaluationContext.Provider>
   );
