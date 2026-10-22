@@ -202,6 +202,15 @@ const QuestionPaperProcessing: React.FC = () => {
             <CardContent className="grid gap-4 sm:grid-cols-2">
               <div><Label>Paper title</Label><Input value={paperTitle} onChange={e => setPaperTitle(e.target.value)} /></div>
               <div><Label>Subject / code</Label><Input value={subject} onChange={e => setSubject(e.target.value)} /></div>
+              <div>
+                <Label>Printed maximum marks</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  value={paperMaximum ?? totalMarks}
+                  onChange={e => setPaperMaximum(e.target.value ? Number(e.target.value) : undefined)}
+                />
+              </div>
               <div className="sm:col-span-2">
                 <Button onClick={generateRubrics} disabled={generating} variant="outline" className="w-full">
                   {generating

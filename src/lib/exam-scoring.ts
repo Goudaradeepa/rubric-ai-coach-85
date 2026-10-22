@@ -38,7 +38,7 @@ export function calculateEffectiveTotals(
 
   const authoritativeMaximum = Number(paperMaximum);
   const effectiveMax = Number.isFinite(authoritativeMaximum) && authoritativeMaximum > 0
-    ? authoritativeMaximum
+    ? Math.max(max, authoritativeMaximum)
     : max;
   return { score: Math.round(score * 10) / 10, max: effectiveMax };
 }
