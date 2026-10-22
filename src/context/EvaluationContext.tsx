@@ -320,6 +320,15 @@ export const EvaluationProvider: React.FC<{ children: React.ReactNode }> = ({ ch
     setEvaluations(prev => [...prev, evaluation]);
   }, [submissions]);
 
+  const removeExam = useCallback((examId: string) => {
+    const exam = exams.find(e => e.id === examId);
+    const questionIds = new Set((exam?.questions || []).map(q => q.id));
+    setExams(prev => prev.filter(e => e.id !== examId));
+    setSubmissions(prev => prev.filter(s => s.examId !== examId));
+    setEvaluations(prev => prev.filter(e => e.examId !== examId));
+    setReviewQueue(prev => prev.filter(r => !questionIds.has(r.questionId)));
+  }, [exams]);
+
   const getExamById = useCallback((id: string) => exams.find(e => e.id === id), [exams]);
   const getEvaluationBySubmissionId = useCallback((id: string) => evaluations.find(e => e.submissionId === id), [evaluations]);
   const getStudentEvaluations = useCallback((email: string) => evaluations.filter(e => e.studentEmail === email), [evaluations]);
