@@ -22,7 +22,7 @@ const QuestionPaperProcessing: React.FC = () => {
 
   const [file, setFile] = useState<File | null>(null);
   const [extracting, setExtracting] = useState(false);
-  const [generating, setGenerating] = useState(false);
+  const [generating, setGenerating] = useState<string | null>(null);
   const [paperTitle, setPaperTitle] = useState("");
   const [subject, setSubject] = useState("");
   const [paperMaximum, setPaperMaximum] = useState<number | undefined>();
@@ -82,13 +82,14 @@ const QuestionPaperProcessing: React.FC = () => {
     }
   };
 
-  // Module 3 — Rubric generation (LLM)
-  const generateRubrics = async () => {
-    if (!questions.length) return;
-    setGenerating(true);
+  // Module 3 — Rubric generation (LLM): whole paper or one question at a time
+  const generateRubrics = async (questionId?: string) => {
+    const targets = questionId ? questions.filter(q => q.id === questionId) : questions;
+    if (!targets.length) return;
+    setGenerating(questionId ?? "all");
     try {
       const { data, error } = await supabase.functions.invoke("generate-rubrics", {
-        body: { subject, questions: questions.map(q => ({ ...q, rubricCriteria: undefined })) },
+        body: { subject, questions: targets.map(q => ({ ...q, rubricCriteria: undefined })) },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -105,12 +106,14 @@ const QuestionPaperProcessing: React.FC = () => {
         }));
         return { ...q, modelAnswer: r.modelAnswer || q.modelAnswer, rubricCriteria: criteria, rubricApproved: false };
       }));
-      toast.success("Rubrics generated — review and approve them");
+      toast.success(questionId
+        ? "Rubric generated for this question"
+        : "Rubrics generated for the whole paper — review below");
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Rubric generation failed");
     } finally {
-      setGenerating(false);
+      setGenerating(null);
     }
   };
 
@@ -134,10 +137,14 @@ const QuestionPaperProcessing: React.FC = () => {
 
   const savePaper = () => {
     if (!paperTitle.trim()) return toast.error("Enter a paper title");
-    if (!rubricsReady) return toast.error("Every question needs a rubric");
-    if (questions.some(q => !q.rubricApproved)) return toast.error("Approve every rubric before saving");
-    addExam({ title: paperTitle, subject: subject || "General", questions, printedTotalMarks: paperMaximum });
-    toast.success("Question paper saved with approved rubrics");
+    const missing = questions.filter(q => q.rubricCriteria.length === 0);
+    if (missing.length) return toast.error(`Generate a rubric for Q${missing.map(q => q.questionNumber + (q.subQuestion || "")).join(", Q")} first`);
+    const mismatched = questions.filter(q => q.rubricCriteria.reduce((s, c) => s + (Number(c.maxScore) || 0), 0) !== q.marks);
+    if (mismatched.length) return toast.error(`Rubric marks don't match question marks for Q${mismatched.map(q => q.questionNumber + (q.subQuestion || "")).join(", Q")}`);
+    // One approval covers every question's rubric
+    const approved = questions.map(q => ({ ...q, rubricApproved: true }));
+    addExam({ title: paperTitle, subject: subject || "General", questions: approved, printedTotalMarks: paperMaximum });
+    toast.success("All rubrics approved and question paper saved");
     navigate("/students-answers");
   };
 
@@ -212,16 +219,17 @@ const QuestionPaperProcessing: React.FC = () => {
                 />
               </div>
               <div className="sm:col-span-2">
-                <Button onClick={generateRubrics} disabled={generating} variant="outline" className="w-full">
-                  {generating
-                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating question-wise rubrics…</>
-                    : <><Sparkles className="mr-2 h-4 w-4" /> Generate Rubrics with AI</>}
+                <Button onClick={() => generateRubrics()} disabled={generating !== null} variant="outline" className="w-full">
+                  {generating === "all"
+                    ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Generating rubrics for the whole paper…</>
+                    : <><Sparkles className="mr-2 h-4 w-4" /> Generate Rubrics for Whole Paper</>}
                 </Button>
+                <p className="mt-2 text-xs text-muted-foreground">Or use "Generate rubric" on any single question below.</p>
               </div>
             </CardContent>
           </Card>
 
-          <h2 className="font-heading text-2xl font-bold text-foreground">3. Review &amp; Approve Rubrics</h2>
+          <h2 className="font-heading text-2xl font-bold text-foreground">3. Review Rubrics</h2>
 
           {questions.map(q => {
             const rubricTotal = q.rubricCriteria.reduce((s, c) => s + (Number(c.maxScore) || 0), 0);
@@ -237,7 +245,16 @@ const QuestionPaperProcessing: React.FC = () => {
                       {q.bloomLevel && <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">BL {q.bloomLevel}</span>}
                       {q.courseOutcome && <span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground">CO {q.courseOutcome}</span>}
                       {q.orGroup && <span className="rounded-full bg-accent/10 px-2 py-0.5 text-accent">OR: {q.orGroup}</span>}
-                      {q.rubricApproved && <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">Approved</span>}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={generating !== null}
+                        onClick={() => generateRubrics(q.id)}
+                      >
+                        {generating === q.id
+                          ? <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generating…</>
+                          : <><Sparkles className="mr-1.5 h-3.5 w-3.5" /> {q.rubricCriteria.length ? "Regenerate rubric" : "Generate rubric"}</>}
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -273,9 +290,6 @@ const QuestionPaperProcessing: React.FC = () => {
                       ))}
                       <div className="flex flex-wrap gap-2">
                         <Button variant="outline" size="sm" onClick={() => addCriterion(q.id)}>Add criterion</Button>
-                        <Button size="sm" disabled={mismatch || q.rubricApproved} onClick={() => updateQuestion(q.id, { rubricApproved: true })}>
-                          <CheckCircle className="mr-2 h-4 w-4" /> {q.rubricApproved ? "Rubric approved" : "Approve rubric"}
-                        </Button>
                       </div>
                       {q.modelAnswer && (
                         <div>
@@ -290,9 +304,10 @@ const QuestionPaperProcessing: React.FC = () => {
             );
           })}
 
-          <Button onClick={savePaper} size="lg" className="w-full gradient-accent border-0 text-accent-foreground">
-            <CheckCircle className="mr-2 h-4 w-4" /> Save Approved Question Paper
+          <Button onClick={savePaper} size="lg" disabled={!rubricsReady || generating !== null} className="w-full gradient-accent border-0 text-accent-foreground">
+            <CheckCircle className="mr-2 h-4 w-4" /> Approve All Rubrics &amp; Save Paper
           </Button>
+          {!rubricsReady && <p className="text-center text-xs text-muted-foreground">Generate a rubric for every question to enable approval.</p>}
         </>
       )}
     </div>
