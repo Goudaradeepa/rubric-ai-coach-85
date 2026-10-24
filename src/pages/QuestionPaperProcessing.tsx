@@ -137,10 +137,14 @@ const QuestionPaperProcessing: React.FC = () => {
 
   const savePaper = () => {
     if (!paperTitle.trim()) return toast.error("Enter a paper title");
-    if (!rubricsReady) return toast.error("Every question needs a rubric");
-    if (questions.some(q => !q.rubricApproved)) return toast.error("Approve every rubric before saving");
-    addExam({ title: paperTitle, subject: subject || "General", questions, printedTotalMarks: paperMaximum });
-    toast.success("Question paper saved with approved rubrics");
+    const missing = questions.filter(q => q.rubricCriteria.length === 0);
+    if (missing.length) return toast.error(`Generate a rubric for Q${missing.map(q => q.questionNumber + (q.subQuestion || "")).join(", Q")} first`);
+    const mismatched = questions.filter(q => q.rubricCriteria.reduce((s, c) => s + (Number(c.maxScore) || 0), 0) !== q.marks);
+    if (mismatched.length) return toast.error(`Rubric marks don't match question marks for Q${mismatched.map(q => q.questionNumber + (q.subQuestion || "")).join(", Q")}`);
+    // One approval covers every question's rubric
+    const approved = questions.map(q => ({ ...q, rubricApproved: true }));
+    addExam({ title: paperTitle, subject: subject || "General", questions: approved, printedTotalMarks: paperMaximum });
+    toast.success("All rubrics approved and question paper saved");
     navigate("/students-answers");
   };
 
