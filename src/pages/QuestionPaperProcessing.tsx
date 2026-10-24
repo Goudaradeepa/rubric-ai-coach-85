@@ -82,13 +82,14 @@ const QuestionPaperProcessing: React.FC = () => {
     }
   };
 
-  // Module 3 — Rubric generation (LLM)
-  const generateRubrics = async () => {
-    if (!questions.length) return;
-    setGenerating(true);
+  // Module 3 — Rubric generation (LLM): whole paper or one question at a time
+  const generateRubrics = async (questionId?: string) => {
+    const targets = questionId ? questions.filter(q => q.id === questionId) : questions;
+    if (!targets.length) return;
+    setGenerating(questionId ?? "all");
     try {
       const { data, error } = await supabase.functions.invoke("generate-rubrics", {
-        body: { subject, questions: questions.map(q => ({ ...q, rubricCriteria: undefined })) },
+        body: { subject, questions: targets.map(q => ({ ...q, rubricCriteria: undefined })) },
       });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -105,12 +106,14 @@ const QuestionPaperProcessing: React.FC = () => {
         }));
         return { ...q, modelAnswer: r.modelAnswer || q.modelAnswer, rubricCriteria: criteria, rubricApproved: false };
       }));
-      toast.success("Rubrics generated — review and approve them");
+      toast.success(questionId
+        ? "Rubric generated for this question"
+        : "Rubrics generated for the whole paper — review below");
     } catch (err: any) {
       console.error(err);
       toast.error(err.message || "Rubric generation failed");
     } finally {
-      setGenerating(false);
+      setGenerating(null);
     }
   };
 
