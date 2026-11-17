@@ -22,6 +22,23 @@ describe("calculateEffectiveTotals", () => {
     expect(calculateEffectiveTotals(questions, id => scores[id] ?? 0)).toEqual({ score: 21, max: 25 });
   });
 
+  it("keeps a 25-mark paper at 25 when both full-mark OR alternatives are answered", () => {
+    const questions = [
+      { id: "1a", questionNumber: 1, orGroup: "A-OR-1", marks: 5 },
+      { id: "1b", questionNumber: 1, orGroup: "A-OR-1", marks: 5 },
+      { id: "2a", questionNumber: 2, orGroup: "A-OR-1", marks: 5 },
+      { id: "2b", questionNumber: 2, orGroup: "A-OR-1", marks: 5 },
+      { id: "3a", questionNumber: 3, orGroup: "B-OR-1", marks: 5 },
+      { id: "3b", questionNumber: 3, orGroup: "B-OR-1", marks: 5 },
+      { id: "4a", questionNumber: 4, orGroup: "B-OR-1", marks: 5 },
+      { id: "4b", questionNumber: 4, orGroup: "B-OR-1", marks: 5 },
+      { id: "5", questionNumber: 5, marks: 5 },
+    ];
+    const scores = Object.fromEntries(questions.map(question => [question.id, question.marks]));
+
+    expect(calculateEffectiveTotals(questions, id => scores[id] ?? 0, 25)).toEqual({ score: 25, max: 25 });
+  });
+
   it("uses the printed paper maximum when OCR provides it", () => {
     const questions = [
       { id: "1", questionNumber: 1, marks: 10 },
