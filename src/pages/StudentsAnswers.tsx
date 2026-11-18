@@ -15,6 +15,7 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { calculateEffectiveTotals } from "@/lib/exam-scoring";
+import { studentNamesMatch } from "@/lib/student-identity";
 
 const ACCEPTED_TYPES = ["application/pdf", "image/jpeg", "image/png", "image/jpg"];
 
@@ -118,6 +119,7 @@ const StudentsAnswers: React.FC = () => {
   const [sheetUrl, setSheetUrl] = useState<string | null>(null);
   const [ocrFullText, setOcrFullText] = useState<string>("");
   const [detected, setDetected] = useState<DetectedSheetInfo | null>(null);
+  const [identityConfirmed, setIdentityConfirmed] = useState(false);
   const [saved, setSaved] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [processed, setProcessed] = useState(false);
@@ -129,8 +131,17 @@ const StudentsAnswers: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const exam = exams.find(e => e.id === selectedExam);
-  const student = students.find(s => s.id === selectedStudent);
+  const selectedStudentRecord = students.find(s => s.id === selectedStudent);
+  const identityName = newName.trim() || detected?.studentName.trim() || "";
+  const student: Student | undefined = selectedStudentRecord ?? (identityName ? {
+    id: selectedStudent || "sheet-student",
+    name: identityName,
+    rollNumber: newRoll.trim() || detected?.rollNumber.trim() || "—",
+    email: newEmail.trim(),
+  } : undefined);
   const directoryMatch = students.find(s => s.rollNumber.trim().toUpperCase() === newRoll.trim().toUpperCase());
+  const detectedName = detected?.studentName.trim() ?? "";
+  const identityMismatch = Boolean(student && detectedName && !studentNamesMatch(student.name, detectedName));
 
   useEffect(() => {
     let active = true;
@@ -250,6 +261,7 @@ const StudentsAnswers: React.FC = () => {
     setSheetUrl(null);
     setOcrFullText("");
     setDetected(null);
+    setIdentityConfirmed(false);
 
     setSaved(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
@@ -278,7 +290,6 @@ const StudentsAnswers: React.FC = () => {
   // POST /answers/sheet — multipart upload of the answer sheet, backend does OCR/HTR + answer extraction
   const handleUploadAndProcess = async () => {
     if (!exam) return toast.error("Select a question paper first");
-    if (!student) return toast.error("Select or add a student first");
     if (!file) return toast.error("Upload the student's answer sheet");
 
     setProcessing(true);
@@ -296,7 +307,7 @@ const StudentsAnswers: React.FC = () => {
 
       const { data, error } = await supabase.functions.invoke("ocr-extract", {
         body: {
-          student_id: student.id,
+          student_id: student?.id ?? null,
           question_paper_id: exam.id,
           fileUrl: urlData.publicUrl,
           mimeType: file.type,
@@ -334,6 +345,18 @@ const StudentsAnswers: React.FC = () => {
       setExtracted(rows);
       setSheetUrl(urlData.publicUrl);
       setOcrFullText(data.fullText || rows.map(r => `Q${r.questionNumber}: ${r.extractedText}`).join("\n\n"));
+      const sheetIdentity: DetectedSheetInfo = {
+        studentName: typeof data.studentName === "string" ? data.studentName : "",
+        rollNumber: typeof data.rollNumber === "string" ? data.rollNumber : "",
+        classSection: typeof data.classSection === "string" ? data.classSection : "",
+        semester: typeof data.semester === "string" ? data.semester : "",
+        subjectCode: typeof data.subjectCode === "string" ? data.subjectCode : "",
+        detectedSubject: typeof data.detectedSubject === "string" ? data.detectedSubject : "",
+        examDate: typeof data.examDate === "string" ? data.examDate : "",
+      };
+      setDetected(sheetIdentity);
+      if (!newName.trim() && sheetIdentity.studentName.trim()) setNewName(sheetIdentity.studentName.trim());
+      setIdentityConfirmed(false);
       setProcessed(true);
       toast.success("Answer sheet processed successfully.");
     } catch (err: any) {
@@ -346,6 +369,14 @@ const StudentsAnswers: React.FC = () => {
 
   // POST /answers/{answer_id}/evaluate — backend performs the full rubric evaluation
   const runEvaluation = async (row: ExtractedAnswer) => {
+    if (!student) {
+      toast.error("Enter the student's name before evaluating answers");
+      return;
+    }
+    if (identityMismatch && !identityConfirmed) {
+      toast.error("Verify the student name on the sheet before evaluating answers");
+      return;
+    }
     const question = exam?.questions.find(q => q.id === row.questionId);
     if (!question) return;
     // Blank answer: no readable text — score 0 locally, skip the AI call
@@ -441,7 +472,15 @@ const StudentsAnswers: React.FC = () => {
 
   // Publishes the finished evaluation to the Teacher Dashboard, Results and Analytics
   const saveToDashboard = () => {
-    if (!exam || !student) return;
+    if (!exam) return;
+    if (!student) {
+      toast.error("Enter the student's name before saving this result");
+      return;
+    }
+    if (identityMismatch && !identityConfirmed) {
+      toast.error("Verify the student name on the sheet before saving this result");
+      return;
+    }
     // A sheet where OCR found no readable answer for any question is blank —
     // publish it as a flagged zero-mark result instead of a broken row.
     const isBlankSheet = extracted.length > 0 && extracted.every(r => !r.extractedText.trim());
@@ -538,11 +577,11 @@ const StudentsAnswers: React.FC = () => {
             <div className="grid gap-3 sm:grid-cols-[1fr_1fr_1fr_auto]">
               <div>
                 <Label>Student name</Label>
-                <Input value={newName} onChange={e => { setNewName(e.target.value); setSelectedStudent(""); }} placeholder="e.g. Anita Rao" />
+                <Input value={newName} onChange={e => { setNewName(e.target.value); setSelectedStudent(""); setIdentityConfirmed(false); }} placeholder="e.g. Anita Rao" />
               </div>
               <div>
                 <Label>USN</Label>
-                <Input value={newRoll} onChange={e => { setNewRoll(e.target.value.toUpperCase()); setSelectedStudent(""); }} placeholder="e.g. 1BM21CS045" />
+                <Input value={newRoll} onChange={e => { setNewRoll(e.target.value.toUpperCase()); setSelectedStudent(""); setIdentityConfirmed(false); }} placeholder="e.g. 1BM21CS045" />
                 <p className="mt-1 text-xs text-muted-foreground">
                   {directoryMatch ? `Saved match: ${directoryMatch.name}` : "Type a saved USN to fill the name, or enter a name to save a new match."}
                 </p>
@@ -561,6 +600,7 @@ const StudentsAnswers: React.FC = () => {
               <Label>Select student</Label>
               <Select value={selectedStudent} onValueChange={id => {
                 setSelectedStudent(id);
+                setIdentityConfirmed(false);
                 const chosen = students.find(s => s.id === id);
                 if (chosen) {
                   setNewName(chosen.name);
@@ -677,7 +717,7 @@ const StudentsAnswers: React.FC = () => {
 
             <Button
               onClick={handleUploadAndProcess}
-              disabled={processing || !file || !student || !exam}
+              disabled={processing || !file || !exam}
               className="w-full gradient-accent border-0 text-accent-foreground"
               size="lg"
             >
@@ -696,8 +736,36 @@ const StudentsAnswers: React.FC = () => {
             )}
 
             {processed && (
-              <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-medium text-success">
-                <CheckCircle className="h-4 w-4" /> Answer sheet processed successfully.
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg border border-success/30 bg-success/10 p-3 text-sm font-medium text-success">
+                  <CheckCircle className="h-4 w-4" /> Answer sheet processed successfully.
+                </div>
+                <div className={`rounded-lg border p-3 text-sm ${identityMismatch && !identityConfirmed ? "border-destructive/30 bg-destructive/10" : "border-border bg-muted/30"}`}>
+                  <p className="font-medium text-foreground">Name read from answer sheet</p>
+                  <p className="mt-1 text-foreground">{detectedName || "No student name was detected"}</p>
+                  {detectedName && student && (
+                    <p className="mt-1 text-muted-foreground">Selected student: {student.name}</p>
+                  )}
+                  {identityMismatch ? (
+                    <div className="mt-3 space-y-2">
+                      <p className="flex items-start gap-2 text-destructive">
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                        The name on the sheet differs from the selected student. Check the sheet before grading.
+                      </p>
+                      {!identityConfirmed ? (
+                        <Button variant="outline" size="sm" onClick={() => setIdentityConfirmed(true)}>
+                          Confirm this sheet belongs to {student?.name}
+                        </Button>
+                      ) : (
+                        <p className="font-medium text-success">Name difference verified. You can continue.</p>
+                      )}
+                    </div>
+                  ) : detectedName ? (
+                    <p className="mt-2 text-sm font-medium text-success">Name matches the selected student.</p>
+                  ) : (
+                    <p className="mt-2 text-muted-foreground">Check the student identity manually before grading.</p>
+                  )}
+                </div>
               </div>
             )}
           </CardContent>
@@ -749,7 +817,7 @@ const StudentsAnswers: React.FC = () => {
                   {!ev && (
                     <Button
                       onClick={() => runEvaluation(row)}
-                      disabled={!!evaluating[row.answerId]}
+                      disabled={!!evaluating[row.answerId] || !student || (identityMismatch && !identityConfirmed)}
                       variant="outline"
                       className="w-full"
                     >
@@ -846,7 +914,7 @@ const StudentsAnswers: React.FC = () => {
               </div>
               <Button
                 onClick={saveToDashboard}
-                disabled={saved || Object.keys(evaluations).length === 0}
+                disabled={saved || !student || Object.keys(evaluations).length === 0 || (identityMismatch && !identityConfirmed)}
                 className="gradient-accent border-0 text-accent-foreground"
               >
                 <CheckCircle className="mr-2 h-4 w-4" /> {saved ? "Saved" : "Save to Dashboard"}
